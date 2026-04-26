@@ -39,6 +39,6 @@ pluginManagement {
     }
 }
 
-rootProject.name = "kotlin-multiplatform-template"
+rootProject.name = "ncnn-kt"
 
 include("app")

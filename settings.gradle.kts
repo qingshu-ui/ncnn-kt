@@ -3,12 +3,6 @@
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 dependencyResolutionManagement {
     repositories {
-        if (System.getenv("GITHUB_ACTIONS") != "true") {
-            maven("https://mirrors.cloud.tencent.com/nexus/repository/maven-public")
-            // maven("https://maven.aliyun.com/repository/central")
-            // maven("https://maven.aliyun.com/repository/google")
-        }
-
         google {
             mavenContent {
                 includeGroupAndSubgroups("androidx")
@@ -22,11 +16,6 @@ dependencyResolutionManagement {
 
 pluginManagement {
     repositories {
-        if (System.getenv("GITHUB_ACTIONS") != "true") {
-            maven("https://maven.aliyun.com/repository/central")
-            maven("https://maven.aliyun.com/repository/gradle-plugin")
-        }
-
         google {
             mavenContent {
                 includeGroupAndSubgroups("androidx")

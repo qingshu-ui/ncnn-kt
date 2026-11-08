@@ -48,13 +48,15 @@ Layers are not bound individually. Layer functionality is reached by loading ncn
 | Linux x64 / arm64 native | `linuxX64`, `linuxArm64` | cinterop | CI |
 | macOS arm64 native | `macosArm64` | cinterop | CI |
 | iOS device / simulator | `iosArm64`, `iosSimulatorArm64` | cinterop | CI (device slice link-only) |
-| Android `arm64-v8a`, `armeabi-v7a`, `x86_64` | `android` | JNI via NDK in an AAR | CI build + emulator test |
+| Android `arm64-v8a`, `armeabi-v7a`, `x86_64` | `android` | JNI via NDK in an AAR | CI build (AAR) |
 
 Kotlin/Native targets are declared **unconditionally** in the `ncnn` module so that
 IntelliJ IDEA indexes every platform source set (`mingwMain`, `linuxMain`, `appleMain`,
-`unixNativeMain`, …) regardless of the host. On a host that cannot build a target, the
-target's Kotlin/Native tasks (compile, cinterop, klib, link, test) are disabled by name, so
-`:ncnn:check`/`:ncnn:build` still succeed. The ncnn library itself is only built for the
+`unixNativeMain`, …) regardless of the host. Cinterop and Kotlin compilation for Linux
+targets work as **cross-compilation** on Windows/macOS hosts (using a portable, platform-
+neutral copy of ncnn's C API headers), so IDE resolution for `linuxMain` works everywhere.
+Linking and test execution for non-host targets are disabled; Apple targets are disabled by
+the Kotlin Gradle plugin on non-macOS hosts. The ncnn library itself is only built for the
 current host's usable targets.
 
 `macosX64` is deprecated/removed in Kotlin 2.3, but JVM on Intel macOS is still supported by
@@ -214,8 +216,8 @@ additionally needs `-include pthread.h` because ncnn's `platform.h` does not inc
 
 The JVM and native suites additionally load files from temporary paths (the JVM test also
 uses a non-ASCII file name to exercise the Windows `_w` path conversion). The Android
-instrumentation test in `android-test-app` runs the same inference through the AAR on an
-x86_64 emulator.
+instrumentation test in `android-test-app` can run the same inference through the AAR on an
+x86_64 emulator (not part of CI; Android CI only compiles the AAR).
 
 ## Upgrading ncnn
 
@@ -237,7 +239,7 @@ CI (`.github/workflows/ci.yml`) is green for all six jobs:
 - Windows x64: JVM + mingwX64 tests, JVM jar
 - Linux x64 and Linux arm64: JVM + native tests
 - macOS arm64: JVM + macOS native + iOS simulator tests, iOS device-slice link
-- Android: all-ABI AAR build + x86_64 emulator instrumentation test
+- Android: all-ABI AAR build (compile only; no emulator tests)
 - Formatting
 
 Run: https://github.com/qingshu-ui/ncnn-kt/actions
@@ -250,5 +252,5 @@ Run: https://github.com/qingshu-ui/ncnn-kt/actions
 - Linux x64 and arm64: `:ncnn:jvmTest` plus the matching native test
 - macOS arm64: `:ncnn:jvmTest :ncnn:macosArm64Test :ncnn:iosSimulatorArm64Test` and the
   iOS device-slice test link
-- Android: all-ABI AAR build plus an x86_64 emulator instrumentation test
+- Android: all-ABI AAR build (no emulator tests)
 - `spotlessCheck`

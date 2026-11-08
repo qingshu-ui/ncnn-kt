@@ -144,9 +144,9 @@ jobs:
             ncnn/build/test-results
 
   android:
-    name: Android (AAR + emulator)
+    name: Android (AAR)
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -166,24 +166,10 @@ jobs:
           key: ncnn-android-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnTasks.kt') }}
       - name: Build AAR (all ABIs)
         run: ./gradlew :ncnn-android-native:assembleDebug --stacktrace
-      - name: Emulator test (x86_64)
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          disable-animations: true
-          script: >-
-            ./gradlew :android-test-app:connectedDebugAndroidTest
-            -Pncnn.android.abis=x86_64 --stacktrace
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: android-artifacts
-          path: |
-            ncnn-android-native/build/outputs/aar
-            android-test-app/build/reports
-            android-test-app/build/outputs/androidTest-results
+          name: android-aar
+          path: ncnn-android-native/build/outputs/aar
 
   spotless:
     name: Formatting

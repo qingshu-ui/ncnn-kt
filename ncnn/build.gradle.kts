@@ -90,14 +90,20 @@ val ncnn = NcnnBuilds(
 for (target in kotlin.targets.filterIsInstance<KotlinNativeTarget>()) {
     val platformId = ncnn.platformIdByTarget.getValue(target.name)
     val installDir = ncnn.installDirs.getValue(platformId)
+    val isSupported = target.name in ncnn.supportedTargets
     val isWindowsTarget = platformId.startsWith("windows")
     val isLinuxTarget = platformId.startsWith("linux")
+    val includeDir = if (isSupported) {
+        installDir.get().dir("include/ncnn")
+    } else {
+        ncnn.portableHeadersDir.get()
+    }
 
     target.compilations.getByName("main").cinterops.create("ncnn") {
         packageName("ncnn")
-        headers(installDir.get().dir("include/ncnn/c_api.h").asFile.absolutePath.replace('\\', '/'))
-        compilerOpts("-I${installDir.get().dir("include/ncnn").asFile.absolutePath}")
-        if (!isLinuxTarget) {
+        headers(includeDir.dir("c_api.h").asFile.absolutePath.replace('\\', '/'))
+        compilerOpts("-I${includeDir.asFile.absolutePath}")
+        if (isSupported && !isLinuxTarget) {
             extraOpts(
                 "-libraryPath",
                 installDir.get().dir("lib").asFile.absolutePath,
@@ -109,6 +115,8 @@ for (target in kotlin.targets.filterIsInstance<KotlinNativeTarget>()) {
 
     target.binaries.configureEach {
         val linkerOptions = when {
+            !isSupported -> emptyList()
+
             // Windows links the import library through cinterop; its runtime lives in the DLL.
             isWindowsTarget -> emptyList()
 
@@ -124,10 +132,12 @@ for (target in kotlin.targets.filterIsInstance<KotlinNativeTarget>()) {
         linkerOpts(*linkerOptions.toTypedArray())
     }
 
-    if (target.name in ncnn.supportedTargets) {
-        val interopTaskName = "cinteropNcnn" + target.name.replaceFirstChar(Char::uppercaseChar)
-        tasks.matching { it.name == interopTaskName }.configureEach {
+    val interopTaskName = "cinteropNcnn" + target.name.replaceFirstChar(Char::uppercaseChar)
+    tasks.matching { it.name == interopTaskName }.configureEach {
+        if (isSupported) {
             dependsOn(ncnn.ncnnBuildTasks.getValue(platformId))
+        } else {
+            dependsOn(ncnn.portableHeadersTask)
         }
     }
 }

@@ -82,6 +82,9 @@ class NcnnBuilds(
 
     val supportedTargets: Set<String> = nativeSpecs.map { it.kmpTarget }.toSet()
 
+    /** Linux klibs can be compiled from any host; executables still need a Linux host. */
+    val crossCompilableTargets: Set<String> = setOf("linuxX64", "linuxArm64")
+
     /** KMP target name -> ncnn platform id, for every declared target. */
     val platformIdByTarget: Map<String, String> = mapOf(
         "mingwX64" to "windows-x64",
@@ -111,6 +114,8 @@ class NcnnBuilds(
         ?: "https://github.com/Tencent/ncnn/releases/download/$ncnnVersion/ncnn-$ncnnVersion-full-source.zip"
 
     val ncnnSourceDir: File
+    val portableHeadersDir: Provider<Directory>
+    val portableHeadersTask: TaskProvider<PortableNcnnHeadersTask>
     val ncnnBuildTasks: Map<String, TaskProvider<CMakeBuildTask>>
     val installDirs: Map<String, Provider<Directory>>
     val jvmNcnnInstallDir: Provider<Directory>
@@ -134,6 +139,13 @@ class NcnnBuilds(
             outputDir.set(unpackedSource)
         }
         ncnnSourceDir = ncnnSourceOverride ?: unpackedSource.get().asFile
+
+        portableHeadersDir = project.layout.buildDirectory.dir("ncnn/portable/include/ncnn")
+        portableHeadersTask = project.tasks.register<PortableNcnnHeadersTask>("generatePortableHeaders") {
+            if (ncnnSourceOverride == null) dependsOn(unpackTask)
+            cApiHeader.set(File(ncnnSourceDir, "src/c_api.h"))
+            outputDir.set(portableHeadersDir)
+        }
 
         val allInstallDirs = (platformIdByTarget.values + jvmPlatformId)
             .distinct()
@@ -170,10 +182,16 @@ class NcnnBuilds(
         if (enableAndroid) registerAndroidBuilds()
     }
 
-    /** Disables compile/link/test/cinterop tasks for targets this host cannot build. */
+    /** Disables link/test tasks for targets this host cannot run, keeping cinterop/compile visible to IDEs. */
     fun disableUnsupportedTargets(targetNames: Collection<String>) {
         targetNames.filter { it !in supportedTargets }.forEach { targetName ->
-            project.tasks.matching { it.name.contains(targetName, ignoreCase = true) }.configureEach {
+            val crossCompile = targetName in crossCompilableTargets
+            project.tasks.matching {
+                val name = it.name
+                name.contains(targetName, ignoreCase = true) &&
+                    !name.startsWith("cinterop", ignoreCase = true) &&
+                    !(crossCompile && (name.startsWith("compile", ignoreCase = true) || name.endsWith("Klibrary")))
+            }.configureEach {
                 enabled = false
             }
         }

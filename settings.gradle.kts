@@ -41,4 +41,13 @@ pluginManagement {
 
 rootProject.name = "ncnn-kt"
 
+val enableAndroid = providers.gradleProperty("ncnn.android").orNull?.toBoolean()
+    ?: System.getenv("NCNN_ANDROID")?.toBoolean()
+    ?: true
+
 include("app")
+include("ncnn")
+if (enableAndroid) {
+    include("ncnn-android-native")
+    include("android-test-app")
+}

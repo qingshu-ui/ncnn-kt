@@ -1,0 +1,208 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ANDROID_COMPILE_SDK: android-37.0
+  ANDROID_BUILD_TOOLS: 37.0.0
+  ANDROID_NDK: 27.2.12479018
+
+jobs:
+  windows:
+    name: Windows x64 (JVM + mingwX64)
+    runs-on: windows-2025
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;$env:ANDROID_COMPILE_SDK" "build-tools;$env:ANDROID_BUILD_TOOLS"
+      - name: Install MinGW-w64
+        run: choco install mingw cmake ninja --no-progress -y
+      - name: Configure MinGW path
+        shell: pwsh
+        run: |
+          $gxx = Get-ChildItem 'C:\ProgramData\chocolatey\lib\mingw' -Recurse -Filter g++.exe |
+            Select-Object -First 1
+          "NCNN_MINGW_BIN=$($gxx.DirectoryName)" >> $env:GITHUB_ENV
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan
+            ncnn/build/ncnn
+          key: ncnn-windows-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnTasks.kt') }}
+      - name: Test
+        shell: pwsh
+        run: ./gradlew.bat :ncnn:jvmTest :ncnn:mingwX64Test :ncnn:jvmJar --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-test-reports
+          path: |
+            ncnn/build/reports
+            ncnn/build/test-results
+
+  linux-x64:
+    name: Linux x64 (JVM + linuxX64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+      - name: Install native tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan
+            ncnn/build/ncnn
+          key: ncnn-linux-x64-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnTasks.kt') }}
+      - name: Test
+        run: ./gradlew :ncnn:jvmTest :ncnn:linuxX64Test --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-x64-test-reports
+          path: |
+            ncnn/build/reports
+            ncnn/build/test-results
+
+  linux-arm64:
+    name: Linux arm64 (JVM + linuxArm64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+      - name: Install native tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan
+            ncnn/build/ncnn
+          key: ncnn-linux-arm64-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnTasks.kt') }}
+      - name: Test
+        run: ./gradlew :ncnn:jvmTest :ncnn:linuxArm64Test --stacktrace
+
+  macos-arm64:
+    name: macOS arm64 (JVM + macos/ios)
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan
+            ncnn/build/ncnn
+          key: ncnn-macos-arm64-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnTasks.kt') }}
+      - name: Test
+        run: >-
+          ./gradlew
+          :ncnn:jvmTest
+          :ncnn:macosArm64Test
+          :ncnn:iosSimulatorArm64Test
+          :ncnn:linkDebugTestIosArm64
+          --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-test-reports
+          path: |
+            ncnn/build/reports
+            ncnn/build/test-results
+
+  android:
+    name: Android (AAR + emulator)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK + NDK
+        run: >-
+          sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+          "ndk;$ANDROID_NDK"
+      - name: Install native tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: ncnn/build/ncnn
+          key: ncnn-android-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnTasks.kt') }}
+      - name: Build AAR (all ABIs)
+        run: ./gradlew :ncnn-android-native:assembleDebug -Pncnn.android=true --stacktrace
+      - name: Emulator test (x86_64)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: >-
+            ./gradlew :android-test-app:connectedDebugAndroidTest
+            -Pncnn.android=true -Pncnn.android.abis=x86_64 --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-artifacts
+          path: |
+            ncnn-android-native/build/outputs/aar
+            android-test-app/build/reports
+            android-test-app/build/outputs/androidTest-results
+
+  spotless:
+    name: Formatting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check formatting
+        run: ./gradlew spotlessCheck --stacktrace

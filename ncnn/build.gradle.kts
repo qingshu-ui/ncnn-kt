@@ -9,7 +9,6 @@ import org.gradle.api.tasks.Sync
 import org.gradle.jvm.toolchain.JavaToolchainService
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink
 import java.io.File
 
 plugins {
@@ -121,19 +120,12 @@ kotlin {
         }
     }
 
-    when {
-        isWindowsHost -> mingwX64()
-
-        isLinuxHost -> {
-            if (isArmHost) linuxArm64() else linuxX64()
-        }
-
-        isMacosHost -> {
-            macosArm64()
-            iosArm64()
-            iosSimulatorArm64()
-        }
-    }
+    mingwX64()
+    linuxX64()
+    linuxArm64()
+    macosArm64()
+    iosArm64()
+    iosSimulatorArm64()
 
     compilerOptions {
         freeCompilerArgs.addAll("-Xexpect-actual-classes")
@@ -274,17 +266,30 @@ for (spec in buildSpecs) {
 // cinterop bindings
 // ---------------------------------------------------------------------------
 
-for (spec in nativeSpecs) {
-    val target = kotlin.targets.findByName(spec.kmpTarget) as? KotlinNativeTarget ?: continue
-    val installDir = layout.buildDirectory.dir("ncnn/${spec.platformId}/install")
-    val buildTask = ncnnBuildTasks.getValue(spec.platformId)
+val supportedNativeTargets: Set<String> = nativeSpecs.map { it.kmpTarget }.toSet()
+
+fun platformIdForTarget(targetName: String): String = when (targetName) {
+    "mingwX64" -> "windows-x64"
+    "linuxX64" -> "linux-x64"
+    "linuxArm64" -> "linux-arm64"
+    "macosArm64" -> "macos-arm64"
+    "iosArm64" -> "ios-arm64"
+    "iosSimulatorArm64" -> "ios-simulator-arm64"
+    else -> error("unknown native target $targetName")
+}
+
+for (target in kotlin.targets.filterIsInstance<KotlinNativeTarget>()) {
+    val platformId = platformIdForTarget(target.name)
+    val installDir = layout.buildDirectory.dir("ncnn/$platformId/install")
+    val isWindowsTarget = platformId.startsWith("windows")
+    val isLinuxTarget = platformId.startsWith("linux")
 
     target.compilations.getByName("main").cinterops.create("ncnn") {
         packageName("ncnn")
         headers(installDir.get().dir("include/ncnn/c_api.h").asFile.absolutePath.replace('\\', '/'))
         compilerOpts("-I${installDir.get().dir("include/ncnn").asFile.absolutePath}")
-        if (!isLinuxHost) {
-            val libraryName = if (isWindowsHost) "libncnn.dll.a" else "libncnn.a"
+        if (!isLinuxTarget) {
+            val libraryName = if (isWindowsTarget) "libncnn.dll.a" else "libncnn.a"
             extraOpts(
                 "-libraryPath",
                 installDir.get().dir("lib").asFile.absolutePath,
@@ -297,10 +302,10 @@ for (spec in nativeSpecs) {
     target.binaries.configureEach {
         val linkerOptions = when {
             // Windows links the import library through cinterop; its runtime lives in the DLL.
-            isWindowsHost -> emptyList()
+            isWindowsTarget -> emptyList()
 
             // Linux links the shared object directly and finds it next to the test binary.
-            isLinuxHost -> listOf(
+            isLinuxTarget -> listOf(
                 "-L${installDir.get().dir("lib").asFile.absolutePath}",
                 "-lncnn",
                 "-Wl,-rpath,\$ORIGIN",
@@ -311,9 +316,11 @@ for (spec in nativeSpecs) {
         linkerOpts(*linkerOptions.toTypedArray())
     }
 
-    val interopTaskName = "cinteropNcnn" + spec.kmpTarget.replaceFirstChar(Char::uppercaseChar)
-    tasks.matching { it.name == interopTaskName }.configureEach {
-        dependsOn(buildTask)
+    if (target.name in supportedNativeTargets) {
+        val interopTaskName = "cinteropNcnn" + target.name.replaceFirstChar(Char::uppercaseChar)
+        tasks.matching { it.name == interopTaskName }.configureEach {
+            dependsOn(ncnnBuildTasks.getValue(platformId))
+        }
     }
 }
 
@@ -500,13 +507,16 @@ if (isLinuxHost) {
 }
 
 // On unsupported hosts only the JVM artifacts are expected to build.
-tasks.withType<KotlinNativeLink>().configureEach {
-    enabled = when {
-        name.contains("Linux", ignoreCase = true) -> isLinuxHost
-        name.contains("Macos", ignoreCase = true) -> isMacosHost
-        name.contains("Ios", ignoreCase = true) -> isMacosHost
-        name.contains("Mingw", ignoreCase = true) -> isWindowsHost
-        else -> true
+// Non-host targets stay in the project model so IDEs index every platform source set,
+// but their Kotlin/Native tasks are disabled so any host can build and check the module.
+val unsupportedNativeTargets = kotlin.targets
+    .filterIsInstance<KotlinNativeTarget>()
+    .map { it.name }
+    .filter { it !in supportedNativeTargets }
+
+for (targetName in unsupportedNativeTargets) {
+    tasks.matching { it.name.contains(targetName, ignoreCase = true) }.configureEach {
+        enabled = false
     }
 }
 

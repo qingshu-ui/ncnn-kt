@@ -50,10 +50,15 @@ Layers are not bound individually. Layer functionality is reached by loading ncn
 | iOS device / simulator | `iosArm64`, `iosSimulatorArm64` | cinterop | CI (device slice link-only) |
 | Android `arm64-v8a`, `armeabi-v7a`, `x86_64` | `android` | JNI via NDK in an AAR | CI build + emulator test |
 
-Kotlin/Native targets are declared only on hosts that can build them (Windows →
-`mingwX64`; Linux → `linuxX64` or `linuxArm64`; macOS → `macosArm64`, `iosArm64`,
-`iosSimulatorArm64`). `macosX64` is deprecated/removed in Kotlin 2.3, but JVM on
-Intel macOS is still supported by building the JNI library for `macos-x64`.
+Kotlin/Native targets are declared **unconditionally** in the `ncnn` module so that
+IntelliJ IDEA indexes every platform source set (`mingwMain`, `linuxMain`, `appleMain`,
+`unixNativeMain`, …) regardless of the host. On a host that cannot build a target, the
+target's Kotlin/Native tasks (compile, cinterop, klib, link, test) are disabled by name, so
+`:ncnn:check`/`:ncnn:build` still succeed. The ncnn library itself is only built for the
+current host's usable targets.
+
+`macosX64` is deprecated/removed in Kotlin 2.3, but JVM on Intel macOS is still supported by
+building the JNI library for `macos-x64`.
 
 Explicitly out of scope for this version:
 

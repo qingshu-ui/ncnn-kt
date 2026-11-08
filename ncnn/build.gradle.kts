@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import ncnn.build.CMakeBuildTask
 import ncnn.build.DownloadFileTask
 import ncnn.build.readLocalProperties
@@ -12,7 +13,6 @@ import java.io.File
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kmp.library)
 }
 
 group = "io.github.qingshu-ui"
@@ -24,6 +24,10 @@ val toolchain = resolveNcnnToolchain(project)
 val enableAndroid = (project.findProperty("ncnn.android") as String?)?.toBoolean()
     ?: System.getenv("NCNN_ANDROID")?.toBoolean()
     ?: true
+
+if (enableAndroid) {
+    apply(plugin = "com.android.kotlin.multiplatform.library")
+}
 
 val hostOs = System.getProperty("os.name").lowercase()
 val hostArch = System.getProperty("os.arch").lowercase()
@@ -107,15 +111,12 @@ kotlin {
     }
 
     if (enableAndroid) {
-        android {
+        extensions.configure<KotlinMultiplatformAndroidLibraryExtension>("android") {
             namespace = "io.github.qingshu.ncnn"
             compileSdk {
                 version = release(37)
             }
             minSdk = 24
-            compilerOptions {
-                jvmTarget.set(JvmTarget.JVM_17)
-            }
         }
     }
 

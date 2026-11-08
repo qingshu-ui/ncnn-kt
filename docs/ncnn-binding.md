@@ -155,15 +155,20 @@ the tensor; `Mat.toPixels(format)` and `toPixelsResize(format, w, h)` convert ba
 
 ## Native library layout
 
-- Windows builds ncnn as a **shared library** (`libncnn.dll` + `libncnn.dll.a` import
-  library). This keeps the MinGW C++ runtime out of the Kotlin/Native link, which uses its
-  own msvcrt-based sysroot.
-  - JVM: `ncnn_jni.dll` links the import library; `libncnn.dll` and `libwinpthread-1.dll`
-    are bundled as resources and preloaded before the JNI library.
-  - Kotlin/Native: cinterop links the import library; `libncnn.dll` and
+- Windows and Linux build ncnn as a **shared library** (`libncnn.dll` + import library on
+  Windows, `libncnn.so` with a stable soname on Linux). This keeps the C++ runtime and the
+  host glibc out of the Kotlin/Native link, which uses its own sysroot.
+  - Windows JVM: `ncnn_jni.dll` links the import library; `libncnn.dll` and
+    `libwinpthread-1.dll` are bundled as resources and preloaded before the JNI library.
+  - Windows Kotlin/Native: cinterop links the import library; `libncnn.dll` and
     `libwinpthread-1.dll` are copied next to the test/binary by Gradle
     (`copyMingwTestRuntime`). Consumers of the native library must ship these DLLs too.
-- Linux/macOS build a static `libncnn.a`; the JNI library statically links it. The JNI
+  - Linux JVM: `libncnn_jni.so` links `libncnn.so`; both are bundled as resources and
+    `libncnn.so` is preloaded first.
+  - Linux Kotlin/Native: the test binary links `-lncnn` and uses
+    `-Wl,-rpath,$ORIGIN`; `libncnn.so` is copied next to the test binary by Gradle.
+    Consumers of the native library must ship `libncnn.so`.
+- macOS/iOS build a static `libncnn.a`; the JNI library statically links it. The JNI
   library is bundled into the JVM resources under
   `io/github/qingshu/ncnn/native/<os>-<arch>/`.
   `NativeLoader` resolves, in order: `-Dncnn.jni.path`, `NCNN_JNI_PATH`,
@@ -177,7 +182,7 @@ the tensor; `Mat.toPixels(format)` and `toPixelsResize(format, w, h)` convert ba
 ncnn is built from source with:
 
 ```
--DNCNN_SHARED_LIB=ON (Windows) / OFF (Linux, macOS, Android)
+-DNCNN_SHARED_LIB=ON (Windows, Linux) / OFF (macOS, iOS, Android)
 -DNCNN_OPENMP=OFF -DNCNN_SIMPLEOMP=ON
 -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF
 -DNCNN_BUILD_TESTS=OFF -DNCNN_VULKAN=OFF -DNCNN_PIXEL=ON
@@ -217,12 +222,20 @@ x86_64 emulator.
 
 Locally (Windows x64, JDK 21, Kotlin/Native 2.3.21, CMake 4.4.2, CLion MinGW GCC 15.2):
 
-- `./gradlew :ncnn:jvmTest :ncnn:mingwX64Test` — all tests pass.
+- `./gradlew :ncnn:jvmTest :ncnn:mingwX64Test` — all tests pass (also with the configuration
+  cache enabled).
 - `./gradlew :ncnn:compileAndroidMain` — the Android Kotlin target compiles.
 - `./gradlew spotlessCheck` — formatting is clean.
 
-The Linux, macOS, Apple-native, and Android AAR/emulator verification is delegated to
-`.github/workflows/ci.yml`.
+CI (`.github/workflows/ci.yml`) is green for all six jobs:
+
+- Windows x64: JVM + mingwX64 tests, JVM jar
+- Linux x64 and Linux arm64: JVM + native tests
+- macOS arm64: JVM + macOS native + iOS simulator tests, iOS device-slice link
+- Android: all-ABI AAR build + x86_64 emulator instrumentation test
+- Formatting
+
+Run: https://github.com/qingshu-ui/ncnn-kt/actions
 
 ## Continuous integration
 

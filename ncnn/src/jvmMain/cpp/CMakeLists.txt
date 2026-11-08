@@ -28,6 +28,11 @@ else()
     set_target_properties(ncnn_jni PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 
+if(ANDROID)
+    # ncnn's platform.h logs through __android_log_print on Android.
+    target_link_libraries(ncnn_jni PRIVATE log)
+endif()
+
 if(WIN32 AND EXISTS "${NCNN_INSTALL_DIR}/lib/libncnn.dll.a")
     target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.dll.a")
 else()

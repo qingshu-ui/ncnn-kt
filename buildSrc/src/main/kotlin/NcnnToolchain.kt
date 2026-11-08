@@ -138,7 +138,7 @@ fun resolveNcnnToolchain(project: Project): NcnnToolchain {
 
     val cinteropLinkerOpts = when (os) {
         "windows" -> gccLibDirs.map { "-L${it.absolutePath}" } + listOf("-lstdc++")
-        "linux" -> gccLibDirs.map { "-L${it.absolutePath}" } + listOf("-lstdc++", "-lpthread", "-ldl", "-lm")
+        "linux" -> gccLibDirs.map { "-L${it.absolutePath}" } + listOf("-lstdc++", "-lpthread", "-ldl", "-lm", "-lmvec")
         else -> listOf("-lc++")
     }
 

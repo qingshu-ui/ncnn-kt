@@ -1,6 +1,7 @@
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import ncnn.build.CMakeBuildTask
 import ncnn.build.DownloadFileTask
+import ncnn.build.ExtractZipTask
 import ncnn.build.readLocalProperties
 import ncnn.build.resolveAndroidNdk
 import ncnn.build.resolveNcnnToolchain
@@ -190,10 +191,10 @@ val downloadNcnnSource = tasks.register<DownloadFileTask>("downloadNcnnSource") 
 
 val unpackedNcnnSourceDir = layout.buildDirectory.dir("ncnn/src/$ncnnVersion")
 
-val unpackNcnnSource = tasks.register<Sync>("unpackNcnnSource") {
+val unpackNcnnSource = tasks.register<ExtractZipTask>("unpackNcnnSource") {
     dependsOn(downloadNcnnSource)
-    from(downloadNcnnSource.flatMap { it.outputFile }.map { zipTree(it) })
-    into(unpackedNcnnSourceDir)
+    archive.set(downloadNcnnSource.flatMap { it.outputFile })
+    outputDir.set(unpackedNcnnSourceDir)
 }
 
 val ncnnSourceDir: File = ncnnSourceOverride ?: unpackedNcnnSourceDir.get().asFile

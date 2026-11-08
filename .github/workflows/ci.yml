@@ -106,7 +106,7 @@ jobs:
             ncnn/build/ncnn
           key: ncnn-linux-arm64-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnTasks.kt') }}
       - name: Test
-        run: ./gradlew :ncnn:jvmTest :ncnn:linuxArm64Test --stacktrace
+        run: ./gradlew :ncnn:check --stacktrace
 
   macos-arm64:
     name: macOS arm64 (JVM + macos/ios)

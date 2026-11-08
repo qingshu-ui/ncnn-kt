@@ -25,10 +25,15 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;$env:ANDROID_COMPILE_SDK" "build-tools;$env:ANDROID_BUILD_TOOLS"
-      - name: Install MinGW-w64
+        shell: pwsh
+        run: |
+          $sdkmanager = (Get-Command sdkmanager -ErrorAction SilentlyContinue).Source
+          if (-not $sdkmanager) {
+            $sdkmanager = "$env:ANDROID_HOME\cmdline-tools\latest\bin\sdkmanager.bat"
+          }
+          & $sdkmanager "platforms;$env:ANDROID_COMPILE_SDK" "build-tools;$env:ANDROID_BUILD_TOOLS"
+      - name: Install MinGW-w64, CMake and Ninja
         run: choco install mingw cmake ninja --no-progress -y
       - name: Configure MinGW path
         shell: pwsh
@@ -64,9 +69,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+        run: |
+          SDKMANAGER=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
+          yes | "$SDKMANAGER" "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
       - name: Install native tools
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
       - uses: gradle/actions/setup-gradle@v4
@@ -96,9 +102,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+        run: |
+          SDKMANAGER=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
+          yes | "$SDKMANAGER" "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
       - name: Install native tools
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
       - uses: gradle/actions/setup-gradle@v4
@@ -121,9 +128,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+        run: |
+          SDKMANAGER=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
+          yes | "$SDKMANAGER" "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
       - uses: gradle/actions/setup-gradle@v4
       - uses: actions/cache@v4
         with:
@@ -157,11 +165,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK + NDK
-        run: >-
-          sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
-          "ndk;$ANDROID_NDK"
+        run: |
+          SDKMANAGER=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
+          yes | "$SDKMANAGER" "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "ndk;$ANDROID_NDK"
       - name: Install native tools
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
       - uses: gradle/actions/setup-gradle@v4
@@ -200,9 +207,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
+        run: |
+          SDKMANAGER=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
+          yes | "$SDKMANAGER" "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
       - uses: gradle/actions/setup-gradle@v4
       - name: Check formatting
         run: ./gradlew spotlessCheck --stacktrace

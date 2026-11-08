@@ -54,6 +54,8 @@ internal object NativeLoader {
                 tempDir,
                 description = "ncnn runtime DLL",
             )
+        } else if (os == "linux") {
+            loadBundled("$resourceDir/libncnn.so", tempDir, required = false)
         }
         loadBundled("$resourceDir/$libraryName", tempDir, required = true)
     }

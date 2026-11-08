@@ -35,6 +35,8 @@ endif()
 
 if(WIN32 AND EXISTS "${NCNN_INSTALL_DIR}/lib/libncnn.dll.a")
     target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.dll.a")
+elseif(UNIX AND NOT APPLE AND EXISTS "${NCNN_INSTALL_DIR}/lib/libncnn.so")
+    target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.so")
 else()
     target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.a")
 endif()

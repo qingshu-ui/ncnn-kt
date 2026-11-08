@@ -219,17 +219,22 @@ fun ncnnFeatureArgs(): List<String> = listOf(
 )
 
 /**
- * On Windows we build ncnn as a DLL: the Kotlin/Native linker then only sees an
- * import library and does not have to mix the MinGW C++ runtime with its own
- * msvcrt-based sysroot. Other platforms use a static library.
+ * Windows and Linux build ncnn as a shared library: Kotlin/Native links only an import
+ * library / shared object, avoiding C++ runtime and glibc-version mixing with its own
+ * sysroot. macOS/iOS use a static library.
  */
-fun platformNcnnArgs(): List<String> = if (isWindowsHost) {
-    listOf(
+fun platformNcnnArgs(): List<String> = when {
+    isWindowsHost -> listOf(
         "-DNCNN_SHARED_LIB=ON",
         "-DCMAKE_SHARED_LINKER_FLAGS=-static-libgcc -static-libstdc++",
     )
-} else {
-    listOf("-DNCNN_SHARED_LIB=OFF")
+
+    isLinuxHost -> listOf(
+        "-DNCNN_SHARED_LIB=ON",
+        "-DCMAKE_SHARED_LINKER_FLAGS=-static-libgcc -static-libstdc++ -Wl,-soname,libncnn.so",
+    )
+
+    else -> listOf("-DNCNN_SHARED_LIB=OFF")
 }
 
 fun commonNcnnConfigureArgs(): List<String> = listOf(
@@ -278,19 +283,31 @@ for (spec in nativeSpecs) {
         packageName("ncnn")
         headers(installDir.get().dir("include/ncnn/c_api.h").asFile.absolutePath.replace('\\', '/'))
         compilerOpts("-I${installDir.get().dir("include/ncnn").asFile.absolutePath}")
-        val libraryName = if (isWindowsHost) "libncnn.dll.a" else "libncnn.a"
-        extraOpts(
-            "-libraryPath",
-            installDir.get().dir("lib").asFile.absolutePath,
-            "-staticLibrary",
-            libraryName,
-        )
+        if (!isLinuxHost) {
+            val libraryName = if (isWindowsHost) "libncnn.dll.a" else "libncnn.a"
+            extraOpts(
+                "-libraryPath",
+                installDir.get().dir("lib").asFile.absolutePath,
+                "-staticLibrary",
+                libraryName,
+            )
+        }
     }
 
     target.binaries.configureEach {
-        // Windows links the ncnn import library only; its C++ runtime lives in ncnn.dll,
-        // so Kotlin/Native must keep using its own MinGW sysroot libraries.
-        val linkerOptions = if (isWindowsHost) emptyList() else toolchain.cinteropLinkerOpts
+        val linkerOptions = when {
+            // Windows links the import library through cinterop; its runtime lives in the DLL.
+            isWindowsHost -> emptyList()
+
+            // Linux links the shared object directly and finds it next to the test binary.
+            isLinuxHost -> listOf(
+                "-L${installDir.get().dir("lib").asFile.absolutePath}",
+                "-lncnn",
+                "-Wl,-rpath,\$ORIGIN",
+            )
+
+            else -> toolchain.cinteropLinkerOpts
+        }
         linkerOpts(*linkerOptions.toTypedArray())
     }
 
@@ -356,6 +373,11 @@ tasks.named<ProcessResources>("jvmProcessResources") {
         }
         from(toolchain.cCompiler.parentFile) {
             include("libwinpthread-1.dll")
+            into("io/github/qingshu/ncnn/native/$jvmPlatformId")
+        }
+    } else if (isLinuxHost) {
+        from(jvmNcnnInstallDir.map { it.dir("lib") }) {
+            include("libncnn.so*")
             into("io/github/qingshu/ncnn/native/$jvmPlatformId")
         }
     }
@@ -458,6 +480,22 @@ if (isWindowsHost) {
     }
     tasks.matching { it.name == "mingwX64Test" }.configureEach {
         dependsOn(copyMingwTestRuntime)
+    }
+}
+
+if (isLinuxHost) {
+    // Linux links libncnn.so from the test binary directory (see -rpath,$ORIGIN).
+    for (spec in nativeSpecs) {
+        val copyTask = tasks.register<Sync>("copy${spec.kmpTarget.replaceFirstChar(Char::uppercaseChar)}Runtime") {
+            dependsOn(ncnnBuildTasks.getValue(spec.platformId))
+            from(layout.buildDirectory.dir("ncnn/${spec.platformId}/install/lib")) {
+                include("libncnn.so*")
+            }
+            into(layout.buildDirectory.dir("bin/${spec.kmpTarget}/debugTest"))
+        }
+        tasks.matching { it.name == "${spec.kmpTarget}Test" }.configureEach {
+            dependsOn(copyTask)
+        }
     }
 }
 

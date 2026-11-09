@@ -59,6 +59,11 @@ neutral copy of ncnn's C API headers), so IDE resolution for `linuxMain` works e
 Linking and test execution for non-host targets are disabled; Apple targets are disabled by
 the Kotlin Gradle plugin on non-macOS hosts.
 
+Kotlin 2.3 cross-compiles cinterop as an **unpacked** klib (`-nopack`), but the IDE's Gradle
+model points at the packed `build/libs/*.klib`. A `packCinteropKlib<target>` task therefore
+writes the packed klib at that path as well (wired to the Linux compile task), so IDE
+resolution works without affecting the directory klib consumed by the compiler.
+
 `macosX64` is deprecated/removed in Kotlin 2.3, but JVM on Intel macOS is still supported by
 building the JNI library for `macos-x64` (the macOS prebuilt is a universal static library).
 

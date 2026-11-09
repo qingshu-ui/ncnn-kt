@@ -2,6 +2,7 @@ import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import ncnn.build.NcnnBuilds
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.tasks.CInteropProcess
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -140,6 +141,23 @@ for (target in kotlin.targets.filterIsInstance<KotlinNativeTarget>()) {
             dependsOn(ncnn.prepareTasks.getValue(platformId))
         } else {
             dependsOn(ncnn.portableHeadersTask)
+        }
+    }
+
+    // KGP cross-compiles cinterop as an unpacked klib (so the compiler can consume it),
+    // while the IDE model points at the packed klib under build/libs. Emit both.
+    if (!isSupported && target.name in ncnn.crossCompilableTargets) {
+        val interop = tasks.named<CInteropProcess>(interopTaskName)
+        val capitalized = target.name.replaceFirstChar(Char::uppercaseChar)
+        val packTask = tasks.register<Zip>("packCinteropKlib$capitalized") {
+            dependsOn(interop)
+            from(interop.flatMap { it.klibDirectory })
+            archiveFileName.set("${project.name}-${target.name}Cinterop-ncnnMain-${project.version}.klib")
+            destinationDirectory.set(layout.buildDirectory.dir("libs"))
+        }
+        interop.configure { finalizedBy(packTask) }
+        tasks.matching { it.name == "compileKotlin$capitalized" }.configureEach {
+            dependsOn(packTask)
         }
     }
 }

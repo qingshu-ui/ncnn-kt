@@ -182,6 +182,7 @@ class NcnnBuilds(
                 name.contains(targetName, ignoreCase = true) &&
                     !name.startsWith("cinterop", ignoreCase = true) &&
                     !name.startsWith("prepareNcnn", ignoreCase = true) &&
+                    !name.startsWith("packCinteropKlib", ignoreCase = true) &&
                     !name.startsWith("downloadNcnn", ignoreCase = true) &&
                     !name.startsWith("unpackNcnn", ignoreCase = true) &&
                     !(crossCompile && (name.startsWith("compile", ignoreCase = true) || name.endsWith("Klibrary")))

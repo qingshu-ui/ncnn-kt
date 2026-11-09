@@ -41,7 +41,6 @@ kotlin {
     // their Kotlin/Native tasks disabled below.
     mingwX64()
     linuxX64()
-    linuxArm64()
     macosArm64()
     iosArm64()
     iosSimulatorArm64()
@@ -83,7 +82,6 @@ listOf("linuxMain", "appleMain").forEach { name ->
 val ncnn = NcnnBuilds(
     project = project,
     ncnnVersion = libs.versions.ncnnVersion.get(),
-    ncnnSourceSha256 = libs.versions.ncnnSourceSha256.get(),
     enableAndroid = enableAndroid,
 )
 
@@ -103,13 +101,17 @@ for (target in kotlin.targets.filterIsInstance<KotlinNativeTarget>()) {
         packageName("ncnn")
         headers(includeDir.dir("c_api.h").asFile.absolutePath.replace('\\', '/'))
         compilerOpts("-I${includeDir.asFile.absolutePath}")
-        if (isSupported && !isLinuxTarget) {
-            extraOpts(
-                "-libraryPath",
-                installDir.get().dir("lib").asFile.absolutePath,
-                "-staticLibrary",
-                if (isWindowsTarget) "libncnn.dll.a" else "libncnn.a",
-            )
+        val staticLibraries = ncnn.cinteropStaticLibraries[platformId].orEmpty()
+        if (isSupported && staticLibraries.isNotEmpty()) {
+            val options = buildList {
+                add("-libraryPath")
+                add(installDir.get().dir("lib").asFile.absolutePath)
+                for (library in staticLibraries) {
+                    add("-staticLibrary")
+                    add(library)
+                }
+            }
+            extraOpts(*options.toTypedArray())
         }
     }
 
@@ -135,7 +137,7 @@ for (target in kotlin.targets.filterIsInstance<KotlinNativeTarget>()) {
     val interopTaskName = "cinteropNcnn" + target.name.replaceFirstChar(Char::uppercaseChar)
     tasks.matching { it.name == interopTaskName }.configureEach {
         if (isSupported) {
-            dependsOn(ncnn.ncnnBuildTasks.getValue(platformId))
+            dependsOn(ncnn.prepareTasks.getValue(platformId))
         } else {
             dependsOn(ncnn.portableHeadersTask)
         }

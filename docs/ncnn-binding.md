@@ -6,19 +6,20 @@ that cinterop can bind ncnn's C++ headers — Kotlin/Native cinterop only binds 
 
 ## Version pinning
 
-- ncnn: **20261020** (`gradle/libs.versions.toml`, `ncnnVersion`), verified with the
-  release asset SHA-256 stored in `ncnnSourceSha256`.
+- ncnn: **20261020**, consumed from Tencent's official prebuilt release packages. Each
+  package is pinned by SHA-256 in `buildSrc/src/main/kotlin/NcnnBuilds.kt`.
 - Kotlin: **2.3.21**, Gradle: **9.4.0**, AGP: **9.0.0**, JDK: **21**.
-- Android NDK: **27.2.12479018**.
+- Android NDK: **27.2.12479018** (JNI only; ncnn itself is prebuilt).
 
-The ncnn source archive is downloaded from the pinned GitHub release and verified before
-it is unpacked into `ncnn/build/ncnn/src/<version>`. Set `ncnn.sourceUrl` in
-`local.properties` (or `NCNN_SOURCE_URL`) when GitHub is not directly reachable, and
-`ncnn.srcDir` to reuse an existing source tree.
+No ncnn sources are downloaded or compiled. Release archives are downloaded, verified and
+unpacked into `ncnn/build/prebuilt/` (or restored from CI cache). Set
+`ncnn.prebuiltBaseUrl` in `local.properties` (or `NCNN_PREBUILT_BASE_URL`) when GitHub is
+not directly reachable.
 
 ## What is bound
 
-Both backends call ncnn's **C API** (`src/c_api.h`), which covers everything exposed here:
+Both backends call ncnn's **C API** (`c_api.h` from the prebuilt package), which covers
+everything exposed here:
 
 | Kotlin | ncnn C API |
 |---|---|
@@ -31,8 +32,8 @@ Both backends call ncnn's **C API** (`src/c_api.h`), which covers everything exp
 Backends:
 
 - **JVM / Android**: a thin JNI C shim (`ncnn/src/jvmMain/cpp/ncnn_jni.c`) over the C API.
-- **Kotlin/Native**: cinterop over `c_api.h`, linked against a per-target static
-  `libncnn.a`.
+- **Kotlin/Native**: cinterop over `c_api.h`, linked against the prebuilt library for the
+  target.
 
 Layers are not bound individually. Layer functionality is reached by loading ncnn
 `.param` / `.bin` models.
@@ -42,10 +43,10 @@ Layers are not bound individually. Layer functionality is reached by loading ncn
 | Platform | Target | Backend | Status |
 |---|---|---|---|
 | JVM on Windows x64 | `jvm` | JNI | built and tested locally + CI |
-| JVM on Linux x64 / arm64 | `jvm` | JNI | CI |
+| JVM on Linux x64 | `jvm` | JNI | CI |
 | JVM on macOS arm64 / x64 | `jvm` | JNI | CI |
 | Windows x64 native | `mingwX64` | cinterop | built and tested locally + CI |
-| Linux x64 / arm64 native | `linuxX64`, `linuxArm64` | cinterop | CI |
+| Linux x64 native | `linuxX64` | cinterop | CI |
 | macOS arm64 native | `macosArm64` | cinterop | CI |
 | iOS device / simulator | `iosArm64`, `iosSimulatorArm64` | cinterop | CI (device slice link-only) |
 | Android `arm64-v8a`, `armeabi-v7a`, `x86_64` | `android` | JNI via NDK in an AAR | CI build (AAR) |
@@ -56,15 +57,18 @@ IntelliJ IDEA indexes every platform source set (`mingwMain`, `linuxMain`, `appl
 targets work as **cross-compilation** on Windows/macOS hosts (using a portable, platform-
 neutral copy of ncnn's C API headers), so IDE resolution for `linuxMain` works everywhere.
 Linking and test execution for non-host targets are disabled; Apple targets are disabled by
-the Kotlin Gradle plugin on non-macOS hosts. The ncnn library itself is only built for the
-current host's usable targets.
+the Kotlin Gradle plugin on non-macOS hosts.
 
 `macosX64` is deprecated/removed in Kotlin 2.3, but JVM on Intel macOS is still supported by
-building the JNI library for `macos-x64`.
+building the JNI library for `macos-x64` (the macOS prebuilt is a universal static library).
+
+**Linux arm64 is not supported in this version** because Tencent publishes no Linux arm64
+release package. It was previously built from source; using prebuilt packages means the
+target cannot be provided.
 
 Explicitly out of scope for this version:
 
-- **Vulkan / GPU**: ncnn is built with `NCNN_VULKAN=OFF`; the option API is not exposed.
+- **Vulkan / GPU**: the Kotlin API does not expose Vulkan options or GPU execution.
 - **Batch inference**: `Mat.n` is exposed read-only, but batch construction is not.
 - **tvOS / watchOS / visionOS and iosX64**: the same cinterop model applies; only iOS and
   macOS are wired up.
@@ -98,8 +102,11 @@ Additional Gradle properties:
 
 - `-Pncnn.android=true|false` — enable/disable the Android target and modules (default `true`).
 - `-Pncnn.android.abis=arm64-v8a,armeabi-v7a,x86_64` — Android ABI subset.
-- `-Pncnn.srcDir=<path>` — use an existing ncnn source tree instead of downloading.
-- `-Pncnn.sourceUrl=<url>` — alternate download URL for the pinned archive.
+- `-Pncnn.prebuiltBaseUrl=<url>` — alternate base URL for the pinned release packages
+  (also `ncnn.prebuiltBaseUrl` in `local.properties` or `NCNN_PREBUILT_BASE_URL`).
+
+CMake and Ninja are still required, but only to compile the small JNI bridge — ncnn itself
+is not compiled.
 
 ## Usage
 
@@ -162,47 +169,51 @@ the tensor; `Mat.toPixels(format)` and `toPixelsResize(format, w, h)` convert ba
 
 ## Native library layout
 
-- Windows and Linux build ncnn as a **shared library** (`libncnn.dll` + import library on
-  Windows, `libncnn.so` with a stable soname on Linux). This keeps the C++ runtime and the
-  host glibc out of the Kotlin/Native link, which uses its own sysroot.
-  - Windows JVM: `ncnn_jni.dll` links the import library; `libncnn.dll` and
-    `libwinpthread-1.dll` are bundled as resources and preloaded before the JNI library.
-  - Windows Kotlin/Native: cinterop links the import library; `libncnn.dll` and
-    `libwinpthread-1.dll` are copied next to the test/binary by Gradle
-    (`copyMingwTestRuntime`). Consumers of the native library must ship these DLLs too.
-  - Linux JVM: `libncnn_jni.so` links `libncnn.so`; both are bundled as resources and
-    `libncnn.so` is preloaded first.
-  - Linux Kotlin/Native: the test binary links `-lncnn` and uses
-    `-Wl,-rpath,$ORIGIN`; `libncnn.so` is copied next to the test binary by Gradle.
-    Consumers of the native library must ship `libncnn.so`.
-- macOS/iOS build a static `libncnn.a`; the JNI library statically links it. The JNI
-  library is bundled into the JVM resources under
-  `io/github/qingshu/ncnn/native/<os>-<arch>/`.
-  `NativeLoader` resolves, in order: `-Dncnn.jni.path`, `NCNN_JNI_PATH`,
-  `System.loadLibrary("ncnn_jni")`, then the bundled resource.
-- Android: `libncnn_jni.so` is packaged per ABI in `ncnn-android-native` (an AAR) and loaded
-  with `System.loadLibrary`. The KMP Android target depends on that AAR at **runtime**
-  (`runtimeOnly`), so Kotlin compilation does not require the NDK.
+The module consumes Tencent's official prebuilt packages directly:
 
-## ncnn build configuration
+| Platform | Package | Link artifact |
+|---|---|---|
+| Windows x64 | `windows-vs2022-shared` | `ncnn.dll` + MSVC import library `ncnn.lib` |
+| Linux x64 | `ubuntu-2404-shared` | `libncnn.so.1` (soname `libncnn.so.1`) |
+| macOS / iOS | `macos.zip`, `ios.zip`, `ios-simulator.zip` | universal/static `libncnn.a` + `libopenmp.a` |
+| Android | `android-shared` | `libncnn.so` per ABI |
 
-ncnn is built from source with:
+- **Windows**: the official DLL is MSVC-built. `ncnn_jni.dll` and the `mingwX64` test binary
+  link `ncnn.lib` (COFF import library; MinGW's ld/lld handle it). `ncnn.dll` plus the VC++
+  runtime DLLs (`msvcp140`, `vcruntime140`, `vcruntime140_1`, `vcomp140`) are bundled for
+  the JVM and copied next to native test binaries. Consumers of the native library must ship
+  the same DLLs.
+- **Linux**: `libncnn_jni.so` and the native test binary link `libncnn.so`; `libncnn.so.1`
+  is bundled/preloaded for the JVM and copied next to the test binary (`-Wl,-rpath,$ORIGIN`).
+  The prebuilt library requires the system `libgomp.so.1`, `libstdc++.so.6` and `libmvec`.
+  Consumers of the native library must ship `libncnn.so.1` and have an OpenMP runtime.
+- **macOS/iOS**: static libraries; the JNI library and cinterop link `libncnn.a` and
+  `libopenmp.a` with `-lc++`. The JNI library is bundled into the JVM resources under
+  `io/github/qingshu/ncnn/native/<os>-<arch>/`. `NativeLoader` resolves, in order:
+  `-Dncnn.jni.path`, `NCNN_JNI_PATH`, `System.loadLibrary("ncnn_jni")`, then the bundled
+  resource.
+- **Android**: `libncnn_jni.so` and `libncnn.so` are packaged per ABI in
+  `ncnn-android-native` (an AAR); the JNI is loaded with `System.loadLibrary` and the
+  prebuilt shared library is resolved from the same ABI directory. The KMP Android target
+  depends on that AAR at **runtime** (`runtimeOnly`), so Kotlin compilation does not require
+  the NDK.
+
+## Prebuilt packages
+
+Pinned assets and SHA-256 values live in `NcnnBuilds.kt`:
 
 ```
--DNCNN_SHARED_LIB=ON (Windows, Linux) / OFF (macOS, iOS, Android)
--DNCNN_OPENMP=OFF -DNCNN_SIMPLEOMP=ON
--DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF
--DNCNN_BUILD_TESTS=OFF -DNCNN_VULKAN=OFF -DNCNN_PIXEL=ON
--DNCNN_PIXEL_DRAWING=OFF -DNCNN_INSTALL_SDK=ON
--DCMAKE_POLICY_VERSION_MINIMUM=3.5
+windows-vs2022-shared   7f39107a…b85b3d
+ubuntu-2404-shared      996e07a7…417842
+android-shared          c2f86678…669a87
+macos                   e33de27e…e3f2d
+ios                     a9f64778…05481be
+ios-simulator           dd842be6…01d6e4
 ```
 
-`CMAKE_POLICY_VERSION_MINIMUM` is required because ncnn still declares
-`cmake_minimum_required(VERSION 2.8.12...3.10)`, which CMake 4.x rejects otherwise.
-`NCNN_SIMPLEOMP` avoids an OpenMP runtime dependency; on Windows ncnn's `simpleomp.cpp`
-additionally needs `-include pthread.h` because ncnn's `platform.h` does not include
-`<pthread.h>` on Windows. The Windows shared build uses
-`-DCMAKE_SHARED_LINKER_FLAGS=-static-libgcc -static-libstdc++`.
+Packages are downloaded from
+`https://github.com/Tencent/ncnn/releases/download/<version>/`, verified, unpacked into
+`ncnn/build/prebuilt/` and normalized to `include/ncnn`, `lib/` (plus `bin/` on Windows).
 
 ## Tests
 
@@ -219,25 +230,27 @@ uses a non-ASCII file name to exercise the Windows `_w` path conversion). The An
 instrumentation test in `android-test-app` can run the same inference through the AAR on an
 x86_64 emulator (not part of CI; Android CI only compiles the AAR).
 
-## Upgrading ncnn
+`## Upgrading ncnn
 
-1. Set `ncnnVersion` and `ncnnSourceSha256` in `gradle/libs.versions.toml`.
-2. Merge any new C API declarations needed into `ncnn_jni.c` and the native wrappers.
-3. Run the CI matrix; the ncnn source build cache keys include the version and sha256.
+1. Set `ncnnVersion` in `gradle/libs.versions.toml`.
+2. Update the six asset names and SHA-256 values in `NcnnBuilds.kt` (all assets carry the version in their file name).
+3. Merge any new C API declarations needed into `ncnn_jni.c` and the native wrappers.
+4. Run the CI matrix; the prebuilt download cache keys include the version and hashes.
 
-## What has been verified
+`## What has been verified
 
 Locally (Windows x64, JDK 21, Kotlin/Native 2.3.21, CMake 4.4.2, CLion MinGW GCC 15.2):
 
-- `./gradlew :ncnn:jvmTest :ncnn:mingwX64Test` — all tests pass (also with the configuration
-  cache enabled).
+- `./gradlew :ncnn:jvmTest :ncnn:mingwX64Test` — all tests pass against the prebuilt
+  Windows release package (also with the configuration cache enabled).
 - `./gradlew :ncnn:compileAndroidMain` — the Android Kotlin target compiles.
+- `./gradlew :ncnn:cinteropNcnnLinuxX64` — Linux cinterop/klib cross-compiles on Windows.
 - `./gradlew spotlessCheck` — formatting is clean.
 
-CI (`.github/workflows/ci.yml`) is green for all six jobs:
+CI (`.github/workflows/ci.yml`) covers five jobs:
 
 - Windows x64: JVM + mingwX64 tests, JVM jar
-- Linux x64 and Linux arm64: JVM + native tests
+- Linux x64: JVM + Linux native tests
 - macOS arm64: JVM + macOS native + iOS simulator tests, iOS device-slice link
 - Android: all-ABI AAR build (compile only; no emulator tests)
 - Formatting
@@ -249,7 +262,7 @@ Run: https://github.com/qingshu-ui/ncnn-kt/actions
 `.github/workflows/ci.yml` runs:
 
 - Windows x64: `:ncnn:jvmTest :ncnn:mingwX64Test`
-- Linux x64 and arm64: `:ncnn:jvmTest` plus the matching native test
+- Linux x64: `:ncnn:jvmTest :ncnn:linuxX64Test`
 - macOS arm64: `:ncnn:jvmTest :ncnn:macosArm64Test :ncnn:iosSimulatorArm64Test` and the
   iOS device-slice test link
 - Android: all-ABI AAR build (no emulator tests)

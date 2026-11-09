@@ -33,12 +33,18 @@ if(ANDROID)
     target_link_libraries(ncnn_jni PRIVATE log)
 endif()
 
-if(WIN32 AND EXISTS "${NCNN_INSTALL_DIR}/lib/libncnn.dll.a")
-    target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.dll.a")
-elseif(UNIX AND NOT APPLE AND EXISTS "${NCNN_INSTALL_DIR}/lib/libncnn.so")
+if(WIN32 AND EXISTS "${NCNN_INSTALL_DIR}/lib/ncnn.lib")
+    # Official ncnn Windows build is MSVC; its import library is usable by MinGW ld/lld.
+    target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/ncnn.lib")
+elseif(APPLE AND EXISTS "${NCNN_INSTALL_DIR}/lib/libncnn.a")
+    target_link_libraries(
+        ncnn_jni
+        PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.a" "${NCNN_INSTALL_DIR}/lib/libopenmp.a"
+    )
+elseif(EXISTS "${NCNN_INSTALL_DIR}/lib/libncnn.so")
     target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.so")
 else()
-    target_link_libraries(ncnn_jni PRIVATE "${NCNN_INSTALL_DIR}/lib/libncnn.a")
+    message(FATAL_ERROR "no prebuilt ncnn library found under ${NCNN_INSTALL_DIR}/lib")
 endif()
 
 if(ANDROID)

@@ -48,6 +48,10 @@ internal object NativeLoader {
         val tempDir = Files.createTempDirectory("ncnn_jni").toFile().apply { deleteOnExit() }
 
         if (os == "windows") {
+            // The official ncnn DLL is MSVC-built; load its runtime first when bundled.
+            for (name in listOf("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll", "vcomp140.dll")) {
+                loadBundled("$resourceDir/$name", tempDir, required = false)
+            }
             loadBundled("$resourceDir/libwinpthread-1.dll", tempDir, required = false)
             loadFirstAvailable(
                 listOf("$resourceDir/ncnn.dll", "$resourceDir/libncnn.dll"),
@@ -55,6 +59,7 @@ internal object NativeLoader {
                 description = "ncnn runtime DLL",
             )
         } else if (os == "linux") {
+            loadBundled("$resourceDir/libncnn.so.1", tempDir, required = false)
             loadBundled("$resourceDir/libncnn.so", tempDir, required = false)
         }
         loadBundled("$resourceDir/$libraryName", tempDir, required = true)

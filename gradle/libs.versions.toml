@@ -7,7 +7,6 @@ kotlinx-serialization = "1.10.0"
 spotless = "8.4.0"
 agp = "9.0.0"
 ncnnVersion = "20261020"
-ncnnSourceSha256 = "699d9acc67489eee0993a551ca1ebc247bbf0f4e33babe1dec810e6a9a52b988"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

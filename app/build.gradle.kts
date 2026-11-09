@@ -22,7 +22,6 @@ kotlin {
     listOf(
         mingwX64(),
         linuxX64(),
-        linuxArm64(),
     ).forEach { target ->
         target.apply {
             binaries {

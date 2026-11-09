@@ -10,6 +10,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.io.File
+import java.nio.file.Files
 
 /**
  * Turns an extracted official ncnn release package into the install layout the module
@@ -79,7 +80,7 @@ abstract class PreparePrebuiltInstallTask : DefaultTask() {
                 val framework = findContaining(raw, "Headers/ncnn/c_api.h")
                 File(framework, "Headers/ncnn").copyRecursively(File(out, "include/ncnn"), overwrite = true)
                 File(out, "lib").mkdirs()
-                findFile(raw, "cnn")?.copyTo(File(out, "lib/libncnn.a"), overwrite = true)
+                (findFile(raw, "ncnn") ?: findFile(raw, "cnn"))?.copyTo(File(out, "lib/libncnn.a"), overwrite = true)
                 findFile(raw, "openmp")?.copyTo(File(out, "lib/libopenmp.a"), overwrite = true)
             }
 
@@ -97,7 +98,9 @@ abstract class PreparePrebuiltInstallTask : DefaultTask() {
 
     private fun findFile(root: File, name: String): File? = root.walkTopDown()
         .maxDepth(6)
-        .firstOrNull { it.isFile && it.name == name && it.length() > 0 }
+        .firstOrNull {
+            it.isFile && it.name == name && it.length() > 1024 && !Files.isSymbolicLink(it.toPath())
+        }
 
     private fun copyInto(root: File, out: File, vararg names: String) {
         for (name in names) {

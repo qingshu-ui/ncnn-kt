@@ -5,7 +5,7 @@ import java.io.File
 import java.util.Properties
 
 /**
- * Resolved native toolchain used to build ncnn and the JNI shared library.
+ * Resolved native toolchain used to build the JNI shared library.
  *
  * Resolution order for every path is: Gradle property, `local.properties`, environment
  * variable, `PATH`, then a platform specific fallback (for example the MinGW toolchain
@@ -19,17 +19,11 @@ data class NcnnToolchain(
     val ninja: File,
     val cCompiler: File,
     val cxxCompiler: File,
-    val mingwLibDir: File?,
-    val gccLibDirs: List<File>,
     val cinteropLinkerOpts: List<String>,
-    val jniLinkerOpts: List<String>,
 ) {
     val isWindows: Boolean get() = os == "windows"
     val isLinux: Boolean get() = os == "linux"
     val isMacos: Boolean get() = os == "macos"
-
-    /** Path separator used by CMake lists on this host. */
-    val listSeparator: String get() = if (isWindows) ";" else ":"
 }
 
 fun resolveNcnnToolchain(project: Project): NcnnToolchain {
@@ -117,36 +111,9 @@ fun resolveNcnnToolchain(project: Project): NcnnToolchain {
         }
     }
 
-    val mingwLibDir = mingwRoot?.let { File(it, "x86_64-w64-mingw32/lib") }
-    val gccLibDirs = when (os) {
-        "windows" -> {
-            val root = requireNotNull(mingwRoot) { "MinGW root not resolved" }
-            val gccRoot = File(root, "lib/gcc/x86_64-w64-mingw32")
-            gccRoot.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name }?.reversed().orEmpty() +
-                listOfNotNull(mingwLibDir, File(root, "lib"))
-        }
-        "linux" -> {
-            val triple = if (arch == "arm64") "aarch64-linux-gnu" else "x86_64-linux-gnu"
-            val dirs = mutableListOf<File>()
-            val gccRoot = File("/usr/lib/gcc/$triple")
-            gccRoot.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name }?.reversed()?.let { dirs += it }
-            listOfNotNull("/usr/lib/$triple", "/usr/lib64", "/usr/lib").forEach { dirs += File(it) }
-            dirs.filter { it.isDirectory }.distinct()
-        }
-        else -> emptyList()
-    }
-
-    val cinteropLinkerOpts = when (os) {
-        "windows" -> gccLibDirs.map { "-L${it.absolutePath}" } + listOf("-lstdc++")
-        "linux" -> gccLibDirs.map { "-L${it.absolutePath}" } + listOf("-lstdc++", "-lpthread", "-ldl", "-lm", "-lmvec")
-        else -> listOf("-lc++")
-    }
-
-    val jniLinkerOpts = when (os) {
-        "windows" -> listOf("-static", "-static-libgcc", "-static-libstdc++")
-        "linux" -> listOf("-static-libgcc", "-static-libstdc++")
-        else -> listOf("-lc++")
-    }
+    // Cinterop only needs explicit system libraries on Apple; Linux/Windows link the
+    // prebuilt release libraries directly (see NcnnBuilds).
+    val cinteropLinkerOpts = if (os == "macos") listOf("-lc++") else emptyList()
 
     return NcnnToolchain(
         platformId = platformId,
@@ -156,10 +123,7 @@ fun resolveNcnnToolchain(project: Project): NcnnToolchain {
         ninja = ninja,
         cCompiler = cc,
         cxxCompiler = cxx,
-        mingwLibDir = mingwLibDir,
-        gccLibDirs = gccLibDirs,
         cinteropLinkerOpts = cinteropLinkerOpts,
-        jniLinkerOpts = jniLinkerOpts,
     )
 }
 

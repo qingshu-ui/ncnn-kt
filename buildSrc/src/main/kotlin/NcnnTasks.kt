@@ -1,31 +1,18 @@
 package ncnn.build
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.file.ConfigurableFileCollection
-import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.ListProperty
-import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.InputFiles
-import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
-import org.gradle.process.ExecOperations
-import org.gradle.process.ExecSpec
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.security.MessageDigest
-import javax.inject.Inject
 
 /** Downloads a pinned artifact and verifies its SHA-256 digest. */
 @CacheableTask
@@ -70,85 +57,6 @@ abstract class DownloadFileTask : DefaultTask() {
         if (!partial.renameTo(target)) {
             partial.copyTo(target, overwrite = true)
             partial.delete()
-        }
-    }
-}
-
-/**
- * Configures, builds and installs a CMake project with a declared install prefix.
- * The install directory is the cacheable output; the build directory is scratch.
- */
-@CacheableTask
-abstract class CMakeBuildTask : DefaultTask() {
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val sourceDir: DirectoryProperty
-
-    @get:Input
-    abstract val cmakeExecutable: Property<String>
-
-    @get:Input
-    abstract val generator: Property<String>
-
-    @get:Input
-    abstract val configureArgs: ListProperty<String>
-
-    @get:Input
-    abstract val environment: MapProperty<String, String>
-
-    @get:InputFiles
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val extraInputs: ConfigurableFileCollection
-
-    @get:OutputDirectory
-    abstract val installDir: DirectoryProperty
-
-    @get:Internal
-    abstract val buildDir: DirectoryProperty
-
-    @get:Inject
-    abstract val execOperations: ExecOperations
-
-    @TaskAction
-    fun build() {
-        val source = sourceDir.get().asFile
-        val build = buildDir.get().asFile
-        val install = installDir.get().asFile
-        val cmake = cmakeExecutable.get()
-        val env = environment.get()
-
-        build.deleteRecursively()
-        build.mkdirs()
-        install.deleteRecursively()
-        install.mkdirs()
-
-        fun ExecSpec.base() {
-            workingDir = build
-            environment.putAll(env)
-        }
-
-        execOperations.exec {
-            base()
-            commandLine(
-                buildList {
-                    add(cmake)
-                    add("-S"); add(source.absolutePath)
-                    add("-B"); add(build.absolutePath)
-                    add("-G"); add(generator.get())
-                    add("-DCMAKE_INSTALL_PREFIX=${install.absolutePath}")
-                    addAll(configureArgs.get())
-                },
-            )
-        }
-
-        execOperations.exec {
-            base()
-            commandLine(cmake, "--build", build.absolutePath, "--parallel")
-        }
-
-        execOperations.exec {
-            base()
-            commandLine(cmake, "--install", build.absolutePath, "--prefix", install.absolutePath)
         }
     }
 }

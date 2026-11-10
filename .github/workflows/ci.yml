@@ -12,7 +12,6 @@ concurrency:
 env:
   ANDROID_COMPILE_SDK: android-37.0
   ANDROID_BUILD_TOOLS: 37.0.0
-  ANDROID_NDK: 27.2.12479018
 
 jobs:
   windows:
@@ -27,14 +26,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Install MinGW-w64, CMake and Ninja
-        run: choco install mingw cmake ninja --no-progress -y
-      - name: Configure MinGW path
-        shell: pwsh
-        run: |
-          $gxx = Get-ChildItem 'C:\ProgramData\chocolatey\lib\mingw' -Recurse -Filter g++.exe |
-            Select-Object -First 1
-          "NCNN_MINGW_BIN=$($gxx.DirectoryName)" >> $env:GITHUB_ENV
       - uses: gradle/actions/setup-gradle@v4
       - uses: actions/cache@v4
         with:
@@ -66,8 +57,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Install native tools
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
       - uses: gradle/actions/setup-gradle@v4
       - uses: actions/cache@v4
         with:
@@ -132,16 +121,15 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Install Android SDK + NDK
+      - name: Install Android SDK packages
         run: |
           SDKMANAGER=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
-          yes | "$SDKMANAGER" "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "ndk;$ANDROID_NDK"
-      - name: Install native tools
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential
+          yes | "$SDKMANAGER" "platforms;$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
       - uses: gradle/actions/setup-gradle@v4
       - uses: actions/cache@v4
         with:
           path: |
+            ~/.konan
             ncnn/build/downloads
             ncnn/build/ncnn/prebuilt
           key: ncnn-android-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnBuilds.kt', 'buildSrc/src/main/kotlin/PreparePrebuiltInstallTask.kt') }}

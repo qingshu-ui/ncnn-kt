@@ -1,20 +1,17 @@
 package ncnn.build
 
-import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.jvm.toolchain.JavaLanguageVersion
-import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 import org.gradle.language.jvm.tasks.ProcessResources
 import java.io.File
 
 /** A native target and the prebuilt ncnn platform it consumes. */
-data class NativeSpec(val kmpTarget: String, val platformId: String, val extraArgs: List<String>)
+data class NativeSpec(val kmpTarget: String, val platformId: String)
 
 /** An official ncnn release asset, pinned by SHA-256. */
 data class PrebuiltAsset(val assetName: String, val sha256: String)
@@ -35,7 +32,8 @@ class NcnnBuilds(
     private val ncnnVersion: String,
     private val enableAndroid: Boolean,
 ) {
-    val toolchain: NcnnToolchain = resolveNcnnToolchain(project)
+    /** System libraries the macOS cinterop link needs in addition to the prebuilt archives. */
+    val macosLinkerOpts: List<String> = listOf("-lc++")
 
     private val hostOs = System.getProperty("os.name").lowercase()
     private val hostArch = System.getProperty("os.arch").lowercase()
@@ -46,34 +44,53 @@ class NcnnBuilds(
 
     val nativeSpecs: List<NativeSpec> = buildList {
         when {
-            isWindowsHost -> add(NativeSpec("mingwX64", "windows-x64", emptyList()))
-            isLinuxHost -> add(NativeSpec("linuxX64", "linux-x64", emptyList()))
+            isWindowsHost -> add(NativeSpec("mingwX64", "windows-x64"))
+            isLinuxHost -> add(NativeSpec("linuxX64", "linux-x64"))
             isMacosHost -> {
-                add(NativeSpec("macosArm64", "macos-arm64", listOf("-DCMAKE_OSX_ARCHITECTURES=arm64")))
-                add(NativeSpec("iosArm64", "ios-arm64", listOf("-DCMAKE_OSX_ARCHITECTURES=arm64")))
-                add(
-                    NativeSpec(
-                        "iosSimulatorArm64",
-                        "ios-simulator-arm64",
-                        listOf("-DCMAKE_OSX_ARCHITECTURES=arm64"),
-                    ),
-                )
+                add(NativeSpec("macosArm64", "macos-arm64"))
+                add(NativeSpec("iosArm64", "ios-arm64"))
+                add(NativeSpec("iosSimulatorArm64", "ios-simulator-arm64"))
+                if (!isArmHost) {
+                    add(NativeSpec("macosX64", "macos-x64"))
+                }
             }
         }
     }
 
-    val supportedTargets: Set<String> = nativeSpecs.map { it.kmpTarget }.toSet()
+    val androidAbis: List<String> = readAndroidAbis(project)
+
+    val androidTargetNameByAbi: Map<String, String> = mapOf(
+        "arm64-v8a" to "androidNativeArm64",
+        "armeabi-v7a" to "androidNativeArm32",
+        "x86_64" to "androidNativeX64",
+        "x86" to "androidNativeX86",
+    )
+
+    val supportedTargets: Set<String> = nativeSpecs.map { it.kmpTarget }.toSet() +
+        if (enableAndroid) {
+            androidAbis.map {
+                androidTargetNameByAbi[it]
+                    ?: error("Unsupported Android ABI '$it'; supported: ${androidTargetNameByAbi.keys}")
+            }.toSet()
+        } else {
+            emptySet()
+        }
 
     /** Linux klibs can be compiled from any host; executables still need a Linux host. */
     val crossCompilableTargets: Set<String> = setOf("linuxX64")
 
-    val platformIdByTarget: Map<String, String> = mapOf(
-        "mingwX64" to "windows-x64",
-        "linuxX64" to "linux-x64",
-        "macosArm64" to "macos-arm64",
-        "iosArm64" to "ios-arm64",
-        "iosSimulatorArm64" to "ios-simulator-arm64",
-    )
+    val platformIdByTarget: Map<String, String> = buildMap {
+        put("mingwX64", "windows-x64")
+        put("linuxX64", "linux-x64")
+        put("macosArm64", "macos-arm64")
+        put("macosX64", "macos-x64")
+        put("iosArm64", "ios-arm64")
+        put("iosSimulatorArm64", "ios-simulator-arm64")
+        put("androidNativeArm32", "android-armeabi-v7a")
+        put("androidNativeArm64", "android-arm64-v8a")
+        put("androidNativeX86", "android-x86")
+        put("androidNativeX64", "android-x86_64")
+    }
 
     val jvmPlatformId: String = when {
         isWindowsHost -> "windows-x64"
@@ -81,8 +98,12 @@ class NcnnBuilds(
         else -> if (isArmHost) "macos-arm64" else "macos-x64"
     }
 
-    private val jvmExtraArgs: List<String> =
-        if (isMacosHost && !isArmHost) listOf("-DCMAKE_OSX_ARCHITECTURES=x86_64") else emptyList()
+    /** Kotlin/Native target whose shared library serves the JVM platform. */
+    val jvmTargetName: String = when {
+        isWindowsHost -> "mingwX64"
+        isLinuxHost -> "linuxX64"
+        else -> if (isArmHost) "macosArm64" else "macosX64"
+    }
 
     val assets: Map<String, PrebuiltAsset> = mapOf(
         "windows" to PrebuiltAsset("ncnn-$ncnnVersion-windows-vs2022-shared.zip", WINDOWS_SHA),
@@ -92,12 +113,6 @@ class NcnnBuilds(
         "ios" to PrebuiltAsset("ncnn-$ncnnVersion-ios.zip", IOS_SHA),
         "ios-simulator" to PrebuiltAsset("ncnn-$ncnnVersion-ios-simulator.zip", IOS_SIMULATOR_SHA),
     )
-
-    private val androidAbis: List<String> = (project.findProperty("ncnn.android.abis") as String?)
-        ?.split(',')
-        ?.map { it.trim() }
-        ?.filter { it.isNotEmpty() }
-        ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
 
     private val baseUrl = (project.findProperty("ncnn.prebuiltBaseUrl") as String?)
         ?: readLocalProperties(project.rootDir).getProperty("ncnn.prebuiltBaseUrl")
@@ -109,9 +124,6 @@ class NcnnBuilds(
     val portableHeadersDir: Provider<Directory> =
         project.layout.buildDirectory.dir("ncnn/portable/include/ncnn")
     val portableHeadersTask: TaskProvider<PortableNcnnHeadersTask>
-    val jniBuildTask: TaskProvider<CMakeBuildTask>
-    val jniInstallDir: Provider<Directory>
-    val jniLibFileName: String
 
     /** Static libraries cinterop should link for a platform (empty for Linux, which links dynamically). */
     val cinteropStaticLibraries: Map<String, List<String>> = mapOf(
@@ -162,16 +174,8 @@ class NcnnBuilds(
             outputDir.set(portableHeadersDir)
         }
 
-        jniLibFileName = when {
-            isWindowsHost -> "ncnn_jni.dll"
-            isMacosHost -> "libncnn_jni.dylib"
-            else -> "libncnn_jni.so"
-        }
-        jniInstallDir = project.layout.buildDirectory.dir("ncnn/jvm-$jvmPlatformId/install")
-        jniBuildTask = registerJniBuild()
         wireJvmResources()
         registerRuntimeCopies()
-        if (enableAndroid) registerAndroidBuilds()
     }
 
     fun disableUnsupportedTargets(targetNames: Collection<String>) {
@@ -218,52 +222,17 @@ class NcnnBuilds(
         }
     }
 
-    private fun registerJniBuild(): TaskProvider<CMakeBuildTask> {
-        val jdkHome = project.extensions.getByType(JavaToolchainService::class.java)
-            .launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) }
-            .get().metadata.installationPath.asFile
-        val install = installDirs.getValue(jvmPlatformId)
-        return project.tasks.register<CMakeBuildTask>("buildJniNcnn") {
-            dependsOn(prepareTasks.getValue(jvmPlatformId))
-            sourceDir.set(project.layout.projectDirectory.dir("src/jvmMain/cpp"))
-            cmakeExecutable.set(toolchain.cmake.absolutePath)
-            generator.set("Ninja")
-            configureArgs.set(
-                listOf(
-                    "-DCMAKE_BUILD_TYPE=Release",
-                    "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
-                    "-DCMAKE_C_COMPILER=${toolchain.cCompiler.absolutePath}",
-                    "-DCMAKE_CXX_COMPILER=${toolchain.cxxCompiler.absolutePath}",
-                    "-DCMAKE_MAKE_PROGRAM=${toolchain.ninja.absolutePath}",
-                    "-DNCNN_INSTALL_DIR=${install.get().asFile.absolutePath}",
-                    "-DJAVA_HOME=${jdkHome.absolutePath}",
-                ) + jvmExtraArgs,
-            )
-            extraInputs.from(install)
-            installDir.set(jniInstallDir)
-            buildDir.set(project.layout.buildDirectory.dir("ncnn/jvm-$jvmPlatformId/build"))
-        }
-    }
-
     private fun wireJvmResources() {
         val resourceDir = "io/github/qingshu/ncnn/native/$jvmPlatformId"
         val install = installDirs.getValue(jvmPlatformId)
         project.tasks.named<ProcessResources>("jvmProcessResources") {
-            dependsOn(jniBuildTask)
-            from(jniInstallDir.map { it.dir("lib") }) {
-                include(jniLibFileName)
-                into(resourceDir)
-            }
+            dependsOn(prepareTasks.getValue(jvmPlatformId))
             if (isWindowsHost) {
                 from(install.map { it.dir("bin") }) {
                     include("ncnn.dll")
                     into(resourceDir)
                 }
                 from(msvcRuntimeDlls()) { into(resourceDir) }
-                from(toolchain.cCompiler.parentFile) {
-                    include("libwinpthread-1.dll")
-                    into(resourceDir)
-                }
             } else if (isLinuxHost) {
                 from(install.map { it.dir("lib") }) {
                     include("libncnn.so*")
@@ -280,7 +249,6 @@ class NcnnBuilds(
                 dependsOn(prepareTasks.getValue(jvmPlatformId))
                 from(install.map { it.dir("bin") }) { include("ncnn.dll") }
                 from(msvcRuntimeDlls())
-                from(toolchain.cCompiler.parentFile) { include("libwinpthread-1.dll") }
                 into(project.layout.buildDirectory.dir("bin/mingwX64/debugTest"))
             }
             project.tasks.matching { it.name == "mingwX64Test" }.configureEach { dependsOn(copy) }
@@ -296,67 +264,6 @@ class NcnnBuilds(
         }
     }
 
-    private fun registerAndroidBuilds() {
-        val ndkVersion = "27.2.12479018"
-        val ndk = resolveAndroidNdk(project, ndkVersion)
-        val jniLibsDir = project.rootProject.layout.buildDirectory.dir("ncnn/android/jniLibs")
-        val copies = mutableListOf<TaskProvider<*>>()
-
-        if (ndk != null) {
-            fun androidArgs(abi: String): List<String> = listOf(
-                "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
-                "-DCMAKE_TOOLCHAIN_FILE=${ndk.absolutePath}/build/cmake/android.toolchain.cmake",
-                "-DANDROID_ABI=$abi",
-                "-DANDROID_PLATFORM=android-24",
-                "-DANDROID_STL=c++_static",
-                "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
-                "-DCMAKE_MAKE_PROGRAM=${toolchain.ninja.absolutePath}",
-            )
-
-            for (abi in androidAbis) {
-                val abiId = abi.replace("-", "")
-                val install = installDirs.getValue("android-$abi")
-                val prepare = prepareTasks.getValue("android-$abi")
-                val jniTask = project.tasks.register<CMakeBuildTask>("buildJniAndroid$abiId") {
-                    dependsOn(prepare)
-                    sourceDir.set(project.layout.projectDirectory.dir("src/jvmMain/cpp"))
-                    cmakeExecutable.set(toolchain.cmake.absolutePath)
-                    generator.set("Ninja")
-                    configureArgs.set(
-                        listOf("-DCMAKE_BUILD_TYPE=Release") +
-                            androidArgs(abi) +
-                            "-DNCNN_INSTALL_DIR=${install.get().asFile.absolutePath}",
-                    )
-                    extraInputs.from(install)
-                    installDir.set(project.layout.buildDirectory.dir("ncnn/android-jni-$abi/install"))
-                    buildDir.set(project.layout.buildDirectory.dir("ncnn/android-jni-$abi/build"))
-                }
-
-                copies += project.tasks.register<Sync>("copyAndroidJni$abiId") {
-                    dependsOn(jniTask)
-                    from(jniTask.flatMap { it.installDir }.map { it.file("lib/libncnn_jni.so") })
-                    from(install.map { it.file("lib/libncnn.so") })
-                    into(jniLibsDir.map { it.dir(abi) })
-                }
-            }
-        }
-
-        project.tasks.register("buildAndroidJni") {
-            group = "build"
-            description = "Builds libncnn_jni.so for all configured Android ABIs."
-            if (ndk != null) {
-                dependsOn(copies)
-            } else {
-                doLast {
-                    throw GradleException(
-                        "Android NDK $ndkVersion not found. Install it under sdk.dir/ndk/$ndkVersion " +
-                            "or set ncnn.ndk / ANDROID_NDK_HOME.",
-                    )
-                }
-            }
-        }
-    }
-
     private fun msvcRuntimeDlls(): List<File> {
         val root = System.getenv("SystemRoot") ?: "C:\\Windows"
         return listOf(
@@ -367,5 +274,18 @@ class NcnnBuilds(
         ).map { File("$root/System32/$it") }.filter { it.exists() }
     }
 }
+
+fun readLocalProperties(rootDir: File): java.util.Properties {
+    val file = File(rootDir, "local.properties")
+    return java.util.Properties().apply {
+        if (file.isFile) file.reader().use { load(it) }
+    }
+}
+
+fun readAndroidAbis(project: Project): List<String> = (project.findProperty("ncnn.android.abis") as String?)
+    ?.split(',')
+    ?.map { it.trim() }
+    ?.filter { it.isNotEmpty() }
+    ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
 
 private fun suffix(id: String): String = id.split('-').joinToString("") { it.replaceFirstChar(Char::uppercaseChar) }

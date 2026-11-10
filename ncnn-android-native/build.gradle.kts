@@ -15,8 +15,9 @@ android {
     )
 }
 
-// The .so files are produced by the :ncnn module (NDK builds per ABI) so that a
-// single toolchain description drives both the KMP Android target and this AAR.
+// The .so files are produced by the :ncnn module (Kotlin/Native shared libraries per
+// Android ABI) so that a single toolchain description drives both the KMP Android target
+// and this AAR.
 tasks.named("preBuild") {
     dependsOn(":ncnn:buildAndroidJni")
 }

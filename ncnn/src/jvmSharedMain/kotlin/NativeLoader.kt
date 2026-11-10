@@ -8,8 +8,8 @@ import java.nio.file.Files
  *
  * Resolution order: `ncnn.jni.path` system property, `NCNN_JNI_PATH` environment
  * variable, `System.loadLibrary("ncnn_jni")`, then the bundled resource for the
- * current OS/architecture (JVM desktop artifacts). On Windows the bundled
- * `libwinpthread-1.dll` is preloaded before the JNI library.
+ * current OS/architecture (JVM desktop artifacts). On Windows the VC++ runtime
+ * and the bundled `ncnn.dll` are preloaded before the JNI library.
  */
 internal object NativeLoader {
     private val loaded: Unit by lazy {
@@ -52,7 +52,6 @@ internal object NativeLoader {
             for (name in listOf("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll", "vcomp140.dll")) {
                 loadBundled("$resourceDir/$name", tempDir, required = false)
             }
-            loadBundled("$resourceDir/libwinpthread-1.dll", tempDir, required = false)
             loadFirstAvailable(
                 listOf("$resourceDir/ncnn.dll", "$resourceDir/libncnn.dll"),
                 tempDir,

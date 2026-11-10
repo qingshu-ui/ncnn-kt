@@ -3,6 +3,7 @@ package io.github.qingshu.ncnn
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.convert
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.usePinned
@@ -185,11 +186,11 @@ internal class NetNative : Net {
         }
 
         // ncnn keeps reference-backed weight Mats pointing into this buffer.
-        val buffer = malloc(data.size.toULong())?.reinterpret<ByteVar>()
+        val buffer = malloc(data.size.convert())?.reinterpret<ByteVar>()
             ?: throw NcnnException("Net.loadModel(memory) failed to allocate ${data.size} bytes")
         try {
             data.usePinned { pinned ->
-                memcpy(buffer, pinned.addressOf(0), data.size.toULong())
+                memcpy(buffer, pinned.addressOf(0), data.size.convert())
             }
             val consumed = ncnn.ncnn_net_load_model_memory(rawHandle(), buffer.reinterpret())
             if (consumed.toLong() == 0L) {

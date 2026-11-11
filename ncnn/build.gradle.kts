@@ -107,6 +107,9 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     sourceSets {
+        // JVM and Android share the JNI declarations, NativeLoader and Mat/Net wrappers;
+        // both targets run on a JVM, but the code uses java.* APIs so it cannot live in
+        // commonMain.
         val jvmSharedMain = create("jvmSharedMain") {
             dependsOn(commonMain.get())
         }
@@ -128,17 +131,25 @@ kotlin {
 
 // The JNI export sources are shared by directory rather than by source set: sharing a
 // source set across the desktop and Android Native target groups prevents cinterop
-// declarations from being visible to the Android compilation.
+// declarations from being visible to the Android compilation. The small JniTypes.kt
+// aliases map the same names to `jni` on desktop and `platform.android` on Android.
 val jniSourceDir = layout.projectDirectory.dir("src/jniMain/kotlin")
+val jniDesktopTypesDir = layout.projectDirectory.dir("src/jniDesktop/kotlin")
+val jniAndroidTypesDir = layout.projectDirectory.dir("src/jniAndroid/kotlin")
 val hostJniSourceSet = when {
     "win" in hostOs -> "mingwMain"
     "mac" in hostOs -> "macosMain"
     else -> "linuxMain"
 }
-kotlin.sourceSets.findByName(hostJniSourceSet)?.kotlin?.srcDir(jniSourceDir)
-val jniAndroidSourceDir = layout.projectDirectory.dir("src/jniAndroidMain/kotlin")
+kotlin.sourceSets.findByName(hostJniSourceSet)?.kotlin?.apply {
+    srcDir(jniSourceDir)
+    srcDir(jniDesktopTypesDir)
+}
 androidJniTargetNames.forEach { targetName ->
-    kotlin.sourceSets.findByName("${targetName}Main")?.kotlin?.srcDir(jniAndroidSourceDir)
+    kotlin.sourceSets.findByName("${targetName}Main")?.kotlin?.apply {
+        srcDir(jniSourceDir)
+        srcDir(jniAndroidTypesDir)
+    }
 }
 
 val nativeMain = kotlin.sourceSets.getByName("nativeMain")

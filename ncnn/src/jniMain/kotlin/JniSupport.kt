@@ -2,12 +2,6 @@
 
 package io.github.qingshu.ncnn
 
-import jni.JNIEnvVar
-import jni.JNINativeInterface_
-import jni.jbyteArray
-import jni.jfloatArray
-import jni.jstring
-import jni.jvalue
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.COpaquePointer
 import kotlinx.cinterop.CPointed
@@ -36,7 +30,7 @@ import platform.posix.free
 import platform.posix.malloc
 import kotlin.experimental.ExperimentalNativeApi
 
-internal fun CPointer<JNIEnvVar>.jniTable(): CPointer<JNINativeInterface_>? = pointed.value
+internal fun CPointer<JniEnvVar>.jniTable(): CPointer<JniTable>? = pointed.value
 
 internal fun CPointer<*>.toHandle(): Long = rawValue.toLong()
 
@@ -49,9 +43,9 @@ internal fun asMat(handle: Long): ncnn_mat_t = handle.toNativePointer()
 internal fun asExtractor(handle: Long): ncnn_extractor_t = handle.toNativePointer()
 
 internal fun jniString(
-    table: CPointer<JNINativeInterface_>,
-    env: CPointer<JNIEnvVar>,
-    value: jstring?,
+    table: CPointer<JniTable>,
+    env: CPointer<JniEnvVar>,
+    value: JString?,
 ): String? {
     if (value == null) return null
     val chars = table.pointed.GetStringChars!!(env, value, null) ?: return null
@@ -63,24 +57,24 @@ internal fun jniString(
 }
 
 internal fun jniNewString(
-    table: CPointer<JNINativeInterface_>,
-    env: CPointer<JNIEnvVar>,
+    table: CPointer<JniTable>,
+    env: CPointer<JniEnvVar>,
     value: String?,
-): jstring? {
+): JString? {
     if (value == null) return null
     return memScoped { table.pointed.NewStringUTF!!(env, value.cstr.ptr) }
 }
 
 internal fun jniNewStringUtf8(
-    table: CPointer<JNINativeInterface_>,
-    env: CPointer<JNIEnvVar>,
+    table: CPointer<JniTable>,
+    env: CPointer<JniEnvVar>,
     value: CPointer<ByteVar>?,
-): jstring? = value?.let { table.pointed.NewStringUTF!!(env, it) }
+): JString? = value?.let { table.pointed.NewStringUTF!!(env, it) }
 
 internal fun jniFloatArray(
-    table: CPointer<JNINativeInterface_>,
-    env: CPointer<JNIEnvVar>,
-    array: jfloatArray?,
+    table: CPointer<JniTable>,
+    env: CPointer<JniEnvVar>,
+    array: JFloatArray?,
 ): FloatArray? {
     if (array == null) return null
     val length = table.pointed.GetArrayLength!!(env, array.reinterpret())
@@ -93,9 +87,9 @@ internal fun jniFloatArray(
 }
 
 internal fun jniByteArray(
-    table: CPointer<JNINativeInterface_>,
-    env: CPointer<JNIEnvVar>,
-    array: jbyteArray?,
+    table: CPointer<JniTable>,
+    env: CPointer<JniEnvVar>,
+    array: JByteArray?,
 ): ByteArray? {
     if (array == null) return null
     val length = table.pointed.GetArrayLength!!(env, array.reinterpret())
@@ -108,27 +102,27 @@ internal fun jniByteArray(
 }
 
 internal fun jniByteArrayLength(
-    table: CPointer<JNINativeInterface_>,
-    env: CPointer<JNIEnvVar>,
-    array: jbyteArray?,
+    table: CPointer<JniTable>,
+    env: CPointer<JniEnvVar>,
+    array: JByteArray?,
 ): Int = if (array == null) 0 else table.pointed.GetArrayLength!!(env, array.reinterpret())
 
 internal fun jniFloatArrayLength(
-    table: CPointer<JNINativeInterface_>,
-    env: CPointer<JNIEnvVar>,
-    array: jfloatArray?,
+    table: CPointer<JniTable>,
+    env: CPointer<JniEnvVar>,
+    array: JFloatArray?,
 ): Int = if (array == null) 0 else table.pointed.GetArrayLength!!(env, array.reinterpret())
 
-private fun CPointer<JNINativeInterface_>.hasPendingException(env: CPointer<JNIEnvVar>): Boolean = pointed.ExceptionCheck!!(env) != 0.toUByte()
+private fun CPointer<JniTable>.hasPendingException(env: CPointer<JniEnvVar>): Boolean = pointed.ExceptionCheck!!(env) != 0.toUByte()
 
-internal fun throwJvm(env: CPointer<JNIEnvVar>, className: String, message: String) {
+internal fun throwJvm(env: CPointer<JniEnvVar>, className: String, message: String) {
     val table = env.jniTable() ?: return
     if (table.hasPendingException(env)) return
     val cls = memScoped { table.pointed.FindClass!!(env, className.cstr.ptr) } ?: return
     memScoped { table.pointed.ThrowNew!!(env, cls, message.cstr.ptr) }
 }
 
-internal fun throwJvmNcnn(env: CPointer<JNIEnvVar>, error: NcnnException) {
+internal fun throwJvmNcnn(env: CPointer<JniEnvVar>, error: NcnnException) {
     val table = env.jniTable() ?: return
     if (table.hasPendingException(env)) return
     val cls = memScoped {
@@ -145,7 +139,7 @@ internal fun throwJvmNcnn(env: CPointer<JNIEnvVar>, error: NcnnException) {
     memScoped {
         val message = table.pointed.NewStringUTF!!(env, (error.message ?: "ncnn error").cstr.ptr)
             ?: return@memScoped
-        val args = allocArray<jvalue>(2)
+        val args = allocArray<JValue>(2)
         args[0].l = message.reinterpret()
         args[1].i = error.code
         val exception = table.pointed.NewObjectA!!(env, cls, ctor, args) ?: return@memScoped
@@ -153,7 +147,7 @@ internal fun throwJvmNcnn(env: CPointer<JNIEnvVar>, error: NcnnException) {
     }
 }
 
-internal inline fun <T> jniBoundary(env: CPointer<JNIEnvVar>, fallback: T, block: () -> T): T = try {
+internal inline fun <T> jniBoundary(env: CPointer<JniEnvVar>, fallback: T, block: () -> T): T = try {
     block()
 } catch (e: NcnnException) {
     throwJvmNcnn(env, e)

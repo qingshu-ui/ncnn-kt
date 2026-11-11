@@ -39,6 +39,10 @@ Backends:
 - **Kotlin/Native**: cinterop over `c_api.h`, linked against the prebuilt library for the
   target.
 
+The JVM and Android API layer shares `ncnn/src/jvmSharedMain/kotlin/` (JNI declarations,
+`NativeLoader`, and the `Mat`/`Net`/`Extractor` wrappers) because both platforms run on a
+JVM.
+
 Layers are not bound individually. Layer functionality is reached by loading ncnn
 `.param` / `.bin` models.
 
@@ -202,12 +206,17 @@ The module consumes Tencent's official prebuilt packages directly:
   prebuilt shared library is resolved from the same ABI directory. The KMP Android target
   depends on that AAR at **runtime** (`runtimeOnly`).
 
-JNI export sources live in two directories because Kotlin/Native cinterop declarations are
-not visible across the desktop and Android Native target groups:
+The 49 JNI exports and their helpers live in one shared directory,
+`ncnn/src/jniMain/kotlin/`. Only the JNI type aliases differ per platform, so each platform
+has a tiny alias file instead of a copied implementation:
 
-- `ncnn/src/jniMain/kotlin/` — desktop JVM (`jni` cinterop over the JDK `jni.h`).
-- `ncnn/src/jniAndroidMain/kotlin/` — Android (`platform.android` JNI bindings). The two
-  directories are kept in sync; the function bodies and ncnn calls are identical.
+- `ncnn/src/jniDesktop/kotlin/JniTypes.kt` — aliases to the `jni` cinterop over the JDK
+  `jni.h`; wired into the host desktop source set.
+- `ncnn/src/jniAndroid/kotlin/JniTypes.kt` — aliases to the `platform.android` JNI
+  bindings; wired into every Android Native target.
+
+The shared directory is added to the host desktop source set and to each Android Native
+target's main source set, together with the matching alias directory.
 
 ## Prebuilt packages
 
@@ -245,9 +254,8 @@ x86_64 emulator (not part of CI; Android CI only compiles the AAR).
 
 1. Set `ncnnVersion` in `gradle/libs.versions.toml`.
 2. Update the six asset names and SHA-256 values in `NcnnBuilds.kt` (all assets carry the version in their file name).
-3. Merge any new C API declarations needed into `ncnn/src/jniMain/kotlin/NcnnJniExports.kt`,
-   `ncnn/src/jniAndroidMain/kotlin/NcnnJniExports.kt`, and the native wrappers. Keep the
-   desktop and Android export files in sync.
+3. Merge any new C API declarations needed into `ncnn/src/jniMain/kotlin/NcnnJniExports.kt`
+   and the native wrappers. The platform alias files only change if a JNI type is added.
 4. Run the CI matrix; the prebuilt download cache keys include the version and hashes.
 
 ## What has been verified

@@ -4,11 +4,6 @@
 package io.github.qingshu.ncnn
 
 import cnames.structs.__ncnn_mat_t
-import jni.JNIEnvVar
-import jni.jbyteArray
-import jni.jclass
-import jni.jfloatArray
-import jni.jstring
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVarOf
@@ -33,26 +28,26 @@ import kotlin.native.CName
 fun jniOnLoad(vm: CPointer<*>?, reserved: CPointer<*>?): Int = 0x00010006
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_ncnnVersionString")
-fun ncnnVersionStringJni(env: CPointer<JNIEnvVar>, clazz: jclass?): jstring? = jniBoundary(env, null) {
+fun ncnnVersionStringJni(env: CPointer<JniEnvVar>, clazz: JClass?): JString? = jniBoundary(env, null) {
     val table = env.jniTable() ?: return@jniBoundary null
     val version = ncnn.ncnn_version() ?: return@jniBoundary null
     jniNewStringUtf8(table, env, version)
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_ncnnVersionNumberJni")
-fun ncnnVersionNumberJni(env: CPointer<JNIEnvVar>, clazz: jclass?): Int = jniBoundary(env, 0) { ncnn.ncnn_version_number() }
+fun ncnnVersionNumberJni(env: CPointer<JniEnvVar>, clazz: JClass?): Int = jniBoundary(env, 0) { ncnn.ncnn_version_number() }
 
 /* ----------------------------------------------------------------- net */
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netCreate")
-fun netCreateJni(env: CPointer<JNIEnvVar>, clazz: jclass?): Long = jniBoundary(env, 0L) {
+fun netCreateJni(env: CPointer<JniEnvVar>, clazz: JClass?): Long = jniBoundary(env, 0L) {
     val net = ncnn.ncnn_net_create()
         ?: throw OutOfMemoryError("Net.create failed: ncnn could not allocate the tensor")
     net.toHandle()
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netDestroy")
-fun netDestroyJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Unit = jniBoundary(env, Unit) {
+fun netDestroyJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Unit = jniBoundary(env, Unit) {
     if (handle != 0L) {
         ncnn.ncnn_net_destroy(asNet(handle))
         releaseNetBuffer(handle)
@@ -61,8 +56,8 @@ fun netDestroyJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Unit 
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netGetOptionInt")
 fun netGetOptionIntJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
     option: Int,
 ): Int = jniBoundary(env, 0) {
@@ -89,8 +84,8 @@ fun netGetOptionIntJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netSetOptionInt")
 fun netSetOptionIntJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
     option: Int,
     value: Int,
@@ -118,10 +113,10 @@ fun netSetOptionIntJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netLoadParamPath")
 fun netLoadParamPathJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    path: jstring?,
+    path: JString?,
 ): Unit = jniBoundary(env, Unit) {
     val table = env.jniTable() ?: return@jniBoundary
     val nativePath = jniString(table, env, path)
@@ -131,10 +126,10 @@ fun netLoadParamPathJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netLoadParamMemory")
 fun netLoadParamMemoryJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    data: jbyteArray?,
+    data: JByteArray?,
 ): Unit = jniBoundary(env, Unit) {
     val table = env.jniTable() ?: return@jniBoundary
     val bytes = jniByteArray(table, env, data) ?: return@jniBoundary
@@ -143,10 +138,10 @@ fun netLoadParamMemoryJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netLoadModelPath")
 fun netLoadModelPathJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    path: jstring?,
+    path: JString?,
 ): Unit = jniBoundary(env, Unit) {
     val table = env.jniTable() ?: return@jniBoundary
     val nativePath = jniString(table, env, path)
@@ -156,10 +151,10 @@ fun netLoadModelPathJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netLoadModelMemory")
 fun netLoadModelMemoryJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    data: jbyteArray?,
+    data: JByteArray?,
 ): Long = jniBoundary(env, 0L) {
     val table = env.jniTable() ?: return@jniBoundary 0L
     if (data == null) return@jniBoundary 0L
@@ -182,33 +177,33 @@ fun netLoadModelMemoryJni(
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netInputCount")
-fun netInputCountJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_input_count(asNet(handle)) }
+fun netInputCountJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_input_count(asNet(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netOutputCount")
-fun netOutputCountJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_output_count(asNet(handle)) }
+fun netOutputCountJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_output_count(asNet(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netInputName")
-fun netInputNameJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, index: Int): jstring? = jniBoundary(env, null) {
+fun netInputNameJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long, index: Int): JString? = jniBoundary(env, null) {
     val table = env.jniTable() ?: return@jniBoundary null
     val name = ncnn.ncnn_net_get_input_name(asNet(handle), index) ?: return@jniBoundary null
     jniNewStringUtf8(table, env, name)
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netOutputName")
-fun netOutputNameJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, index: Int): jstring? = jniBoundary(env, null) {
+fun netOutputNameJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long, index: Int): JString? = jniBoundary(env, null) {
     val table = env.jniTable() ?: return@jniBoundary null
     val name = ncnn.ncnn_net_get_output_name(asNet(handle), index) ?: return@jniBoundary null
     jniNewStringUtf8(table, env, name)
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netInputIndex")
-fun netInputIndexJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, index: Int): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_input_index(asNet(handle), index) }
+fun netInputIndexJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long, index: Int): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_input_index(asNet(handle), index) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netOutputIndex")
-fun netOutputIndexJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, index: Int): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_output_index(asNet(handle), index) }
+fun netOutputIndexJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long, index: Int): Int = jniBoundary(env, 0) { ncnn.ncnn_net_get_output_index(asNet(handle), index) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_netClear")
-fun netClearJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Unit = jniBoundary(env, Unit) {
+fun netClearJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Unit = jniBoundary(env, Unit) {
     val net = asNet(handle)
     ncnn.ncnn_net_clear(net)
     releaseNetBuffer(handle)
@@ -217,23 +212,23 @@ fun netClearJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Unit = 
 /* ----------------------------------------------------------- extractor */
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_extractorCreate")
-fun extractorCreateJni(env: CPointer<JNIEnvVar>, clazz: jclass?, net: Long): Long = jniBoundary(env, 0L) {
+fun extractorCreateJni(env: CPointer<JniEnvVar>, clazz: JClass?, net: Long): Long = jniBoundary(env, 0L) {
     val extractor = ncnn.ncnn_extractor_create(asNet(net))
         ?: throw OutOfMemoryError("Net.createExtractor failed: ncnn could not allocate the tensor")
     extractor.toHandle()
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_extractorDestroy")
-fun extractorDestroyJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Unit = jniBoundary(env, Unit) {
+fun extractorDestroyJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Unit = jniBoundary(env, Unit) {
     if (handle != 0L) ncnn.ncnn_extractor_destroy(asExtractor(handle))
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_extractorInputName")
 fun extractorInputNameJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    name: jstring?,
+    name: JString?,
     mat: Long,
 ): Unit = jniBoundary(env, Unit) {
     val table = env.jniTable() ?: return@jniBoundary
@@ -246,8 +241,8 @@ fun extractorInputNameJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_extractorInputIndex")
 fun extractorInputIndexJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
     index: Int,
     mat: Long,
@@ -260,10 +255,10 @@ fun extractorInputIndexJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_extractorExtractName")
 fun extractorExtractNameJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    name: jstring?,
+    name: JString?,
 ): Long = jniBoundary(env, 0L) {
     val table = env.jniTable() ?: return@jniBoundary 0L
     val nativeName = jniString(table, env, name) ?: return@jniBoundary 0L
@@ -280,8 +275,8 @@ fun extractorExtractNameJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_extractorExtractIndex")
 fun extractorExtractIndexJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
     index: Int,
 ): Long = jniBoundary(env, 0L) {
@@ -299,7 +294,7 @@ fun extractorExtractIndexJni(
 /* ----------------------------------------------------------------- mat */
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matCreate")
-fun matCreateJni(env: CPointer<JNIEnvVar>, clazz: jclass?, w: Int, h: Int, c: Int): Long = jniBoundary(env, 0L) {
+fun matCreateJni(env: CPointer<JniEnvVar>, clazz: JClass?, w: Int, h: Int, c: Int): Long = jniBoundary(env, 0L) {
     val mat = when {
         c > 0 -> ncnn.ncnn_mat_create_3d(w, h, c, null)
         h > 0 -> ncnn.ncnn_mat_create_2d(w, h, null)
@@ -313,50 +308,50 @@ fun matCreateJni(env: CPointer<JNIEnvVar>, clazz: jclass?, w: Int, h: Int, c: In
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matDestroy")
-fun matDestroyJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Unit = jniBoundary(env, Unit) {
+fun matDestroyJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Unit = jniBoundary(env, Unit) {
     if (handle != 0L) ncnn.ncnn_mat_destroy(asMat(handle))
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matDims")
-fun matDimsJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_dims(asMat(handle)) }
+fun matDimsJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_dims(asMat(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matW")
-fun matWJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_w(asMat(handle)) }
+fun matWJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_w(asMat(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matH")
-fun matHJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_h(asMat(handle)) }
+fun matHJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_h(asMat(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matD")
-fun matDJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_d(asMat(handle)) }
+fun matDJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_d(asMat(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matC")
-fun matCJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_c(asMat(handle)) }
+fun matCJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_c(asMat(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matN")
-fun matNJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_n(asMat(handle)) }
+fun matNJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_n(asMat(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matElementSize")
-fun matElementSizeJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_elemsize(asMat(handle)).toInt() }
+fun matElementSizeJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_elemsize(asMat(handle)).toInt() }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matElementPack")
-fun matElementPackJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_elempack(asMat(handle)) }
+fun matElementPackJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Int = jniBoundary(env, 0) { ncnn.ncnn_mat_get_elempack(asMat(handle)) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matChannelStep")
-fun matChannelStepJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Long = jniBoundary(env, 0L) { ncnn.ncnn_mat_get_cstep(asMat(handle)).toLong() }
+fun matChannelStepJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Long = jniBoundary(env, 0L) { ncnn.ncnn_mat_get_cstep(asMat(handle)).toLong() }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matDataSize")
-fun matDataSizeJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Long = jniBoundary(env, 0L) { asMat(handle).matDataSize() }
+fun matDataSizeJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Long = jniBoundary(env, 0L) { asMat(handle).matDataSize() }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matFill")
-fun matFillJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, value: Float): Unit = jniBoundary(env, Unit) { ncnn.ncnn_mat_fill_float(asMat(handle), value) }
+fun matFillJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long, value: Float): Unit = jniBoundary(env, Unit) { ncnn.ncnn_mat_fill_float(asMat(handle), value) }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matClone")
-fun matCloneJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Long = jniBoundary(env, 0L) {
+fun matCloneJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Long = jniBoundary(env, 0L) {
     requireMat(ncnn.ncnn_mat_clone(asMat(handle), null), "Mat.clone")
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matReshape")
-fun matReshapeJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, w: Int, h: Int, c: Int): Long = jniBoundary(env, 0L) {
+fun matReshapeJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long, w: Int, h: Int, c: Int): Long = jniBoundary(env, 0L) {
     val mat = asMat(handle)
     val out = when {
         c > 0 -> ncnn.ncnn_mat_reshape_3d(mat, w, h, c, null)
@@ -367,7 +362,7 @@ fun matReshapeJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, w: Int
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matConvertPacking")
-fun matConvertPackingJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long, elementPack: Int): Long = jniBoundary(env, 0L) {
+fun matConvertPackingJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long, elementPack: Int): Long = jniBoundary(env, 0L) {
     memScoped {
         val out = alloc<CPointerVarOf<CPointer<__ncnn_mat_t>>>()
         ncnn.ncnn_convert_packing(asMat(handle), out.ptr, elementPack, null)
@@ -376,7 +371,7 @@ fun matConvertPackingJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long,
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matFlatten")
-fun matFlattenJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Long = jniBoundary(env, 0L) {
+fun matFlattenJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): Long = jniBoundary(env, 0L) {
     memScoped {
         val out = alloc<CPointerVarOf<CPointer<__ncnn_mat_t>>>()
         ncnn.ncnn_flatten(asMat(handle), out.ptr, null)
@@ -385,7 +380,7 @@ fun matFlattenJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): Long 
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matReadFloats")
-fun matReadFloatsJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): jfloatArray? = jniBoundary(env, null) {
+fun matReadFloatsJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): JFloatArray? = jniBoundary(env, null) {
     val table = env.jniTable() ?: return@jniBoundary null
     val mat = asMat(handle)
     if (ncnn.ncnn_mat_get_elemsize(mat).toLong() != 4L || ncnn.ncnn_mat_get_elempack(mat) != 1) {
@@ -411,10 +406,10 @@ fun matReadFloatsJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): jf
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matWriteFloats")
 fun matWriteFloatsJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    values: jfloatArray?,
+    values: JFloatArray?,
 ): Unit = jniBoundary(env, Unit) {
     val table = env.jniTable() ?: return@jniBoundary
     val mat = asMat(handle)
@@ -435,7 +430,7 @@ fun matWriteFloatsJni(
 }
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matReadBytes")
-fun matReadBytesJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): jbyteArray? = jniBoundary(env, null) {
+fun matReadBytesJni(env: CPointer<JniEnvVar>, clazz: JClass?, handle: Long): JByteArray? = jniBoundary(env, null) {
     val table = env.jniTable() ?: return@jniBoundary null
     val mat = asMat(handle)
     val elemsize = ncnn.ncnn_mat_get_elemsize(mat).toLong()
@@ -457,10 +452,10 @@ fun matReadBytesJni(env: CPointer<JNIEnvVar>, clazz: jclass?, handle: Long): jby
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matWriteBytes")
 fun matWriteBytesJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    bytes: jbyteArray?,
+    bytes: JByteArray?,
 ): Unit = jniBoundary(env, Unit) {
     val table = env.jniTable() ?: return@jniBoundary
     val mat = asMat(handle)
@@ -479,11 +474,11 @@ fun matWriteBytesJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matSubstractMeanNormalize")
 fun matSubstractMeanNormalizeJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
-    mean: jfloatArray?,
-    norm: jfloatArray?,
+    mean: JFloatArray?,
+    norm: JFloatArray?,
 ): Unit = jniBoundary(env, Unit) {
     val table = env.jniTable() ?: return@jniBoundary
     val mat = asMat(handle)
@@ -509,9 +504,9 @@ fun matSubstractMeanNormalizeJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matFromPixels")
 fun matFromPixelsJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
-    pixels: jbyteArray?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
+    pixels: JByteArray?,
     type: Int,
     w: Int,
     h: Int,
@@ -533,9 +528,9 @@ fun matFromPixelsJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matFromPixelsResize")
 fun matFromPixelsResizeJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
-    pixels: jbyteArray?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
+    pixels: JByteArray?,
     type: Int,
     w: Int,
     h: Int,
@@ -568,12 +563,12 @@ fun matFromPixelsResizeJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matToPixels")
 fun matToPixelsJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
     type: Int,
     stride: Int,
-): jbyteArray? = jniBoundary(env, null) {
+): JByteArray? = jniBoundary(env, null) {
     val table = env.jniTable() ?: return@jniBoundary null
     val channels = pixelChannels(type)
     if (channels == 0) throw IllegalArgumentException("unsupported pixel type")
@@ -595,14 +590,14 @@ fun matToPixelsJni(
 
 @CName("Java_io_github_qingshu_ncnn_NcnnJni_matToPixelsResize")
 fun matToPixelsResizeJni(
-    env: CPointer<JNIEnvVar>,
-    clazz: jclass?,
+    env: CPointer<JniEnvVar>,
+    clazz: JClass?,
     handle: Long,
     type: Int,
     targetWidth: Int,
     targetHeight: Int,
     stride: Int,
-): jbyteArray? = jniBoundary(env, null) {
+): JByteArray? = jniBoundary(env, null) {
     val table = env.jniTable() ?: return@jniBoundary null
     val channels = pixelChannels(type)
     if (channels == 0) throw IllegalArgumentException("unsupported pixel type")

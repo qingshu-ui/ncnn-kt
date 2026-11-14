@@ -65,7 +65,7 @@ kotlin.targets.filterIsInstance<KotlinNativeTarget>().forEach { target ->
 
 // Bundle the JNI bridge and ncnn runtime for every desktop platform into the JVM jar.
 // Linux is cross-linkable from Windows, so a Windows build ships both platform directories.
-val desktopPlatforms = buildList<Triple<String, String, String>> {
+val desktopPlatforms = buildList {
     add(Triple("linux-x64", "linuxX64", "libncnn_jni.so"))
     if (HostManager.hostIsMingw) {
         add(Triple("windows-x64", "mingwX64", "ncnn_jni.dll"))

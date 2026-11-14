@@ -35,7 +35,7 @@ kotlin {
     }
 }
 
-val jniLibsTasks = mutableListOf<org.gradle.api.tasks.TaskProvider<SyncJniLibsTask>>()
+val jniLibsTasks = mutableListOf<TaskProvider<SyncJniLibsTask>>()
 
 kotlin.targets.filterIsInstance<KotlinNativeTarget>().forEach { target ->
     val ncnnPlatformDir = ncnnLibsDir.dir(ncnnPlatformByTarget.getValue(target.name))
@@ -46,6 +46,8 @@ kotlin.targets.filterIsInstance<KotlinNativeTarget>().forEach { target ->
 
     val abiName = ncnnPlatformByTarget.getValue(target.name).removePrefix("android-")
     jniLibsTasks += tasks.register<SyncJniLibsTask>("syncJniLibs${abiName.replace("-", "")}") {
+        group = "build"
+        description = "Bundles libncnn_jni.so and libncnn.so for $abiName into the Android AAR."
         abi.set(abiName)
         outputDir.set(layout.buildDirectory.dir("generated/jniLibs/$abiName"))
         dependsOn("linkReleaseShared${target.name.replaceFirstChar(Char::uppercaseChar)}")

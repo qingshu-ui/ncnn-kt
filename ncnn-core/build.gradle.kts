@@ -86,3 +86,34 @@ tasks.withType<KotlinNativeLink>().configureEach {
         else -> true
     }
 }
+
+val ncnnLibsDir = rootProject.layout.projectDirectory.dir("libs")
+
+kotlin.targets.filterIsInstance<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().forEach { target ->
+    target.binaries.all {
+        linkTaskProvider.configure { dependsOn(rootProject.tasks.named("downloadNcnn")) }
+        linkerOpts += when (target.name) {
+            "linuxX64" -> listOf(
+                "-L${ncnnLibsDir.dir("linux-x64/lib").asFile.absolutePath}",
+                "-lncnn",
+                $$"-Wl,-rpath,$ORIGIN",
+            )
+
+            else -> emptyList()
+        }
+    }
+}
+// Native tests load the shared ncnn runtime from next to the test executable.
+val copyMingwTestNatives = tasks.register<Copy>("copyMingwTestNatives") {
+    dependsOn(rootProject.tasks.named("downloadNcnn"))
+    from(ncnnLibsDir.dir("windows-x64/bin")) { include("ncnn.dll") }
+    into(layout.buildDirectory.dir("bin/mingwX64/debugTest"))
+}
+tasks.matching { it.name == "mingwX64Test" }.configureEach { dependsOn(copyMingwTestNatives) }
+
+val copyLinuxTestNatives = tasks.register<Copy>("copyLinuxTestNatives") {
+    dependsOn(rootProject.tasks.named("downloadNcnn"))
+    from(ncnnLibsDir.dir("linux-x64/lib")) { include("libncnn.so.1") }
+    into(layout.buildDirectory.dir("bin/linuxX64/debugTest"))
+}
+tasks.matching { it.name == "linuxX64Test" }.configureEach { dependsOn(copyLinuxTestNatives) }

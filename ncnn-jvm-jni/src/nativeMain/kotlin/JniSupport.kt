@@ -106,7 +106,7 @@ private fun throwNcnn(env: CPointer<JNIEnvVar>, error: NcnnBindingException) {
     val table = env.jniTable() ?: return
     if (table.hasPendingException(env)) return
     val cls = memScoped {
-        table.pointed.FindClass!!(env, "io/github/qingshu/ncnn/NcnnException".cstr.ptr)
+        table.pointed.FindClass!!(env, "io/github/qingshu/ncnn_core/NcnnException".cstr.ptr)
     } ?: return
     val ctor = memScoped {
         table.pointed.GetMethodID!!(env, cls, "<init>".cstr.ptr, "(Ljava/lang/String;I)V".cstr.ptr)

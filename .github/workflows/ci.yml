@@ -31,19 +31,22 @@ jobs:
         with:
           path: |
             ~/.konan
-            ncnn/build/downloads
-            ncnn/build/ncnn/prebuilt
-          key: ncnn-windows-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnBuilds.kt', 'buildSrc/src/main/kotlin/PreparePrebuiltInstallTask.kt') }}
+            third_party/ncnn/.downloads
+            third_party/ncnn/windows-x64
+          key: ncnn-windows-${{ hashFiles('third_party/ncnn/README.md', 'third_party/ncnn/include/ncnn/c_api.h', 'scripts/fetch-ncnn-release.ps1') }}
+      - name: Fetch ncnn SDK
+        shell: pwsh
+        run: ./scripts/fetch-ncnn-release.ps1 -Platform windows-x64
       - name: Test
         shell: pwsh
-        run: ./gradlew.bat :ncnn:jvmTest :ncnn:mingwX64Test :ncnn:jvmJar --stacktrace
+        run: ./gradlew.bat :ncnn-core:jvmTest :ncnn-core:mingwX64Test :ncnn-jni:jar --stacktrace
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: windows-test-reports
           path: |
-            ncnn/build/reports
-            ncnn/build/test-results
+            ncnn-core/build/reports
+            ncnn-core/build/test-results
 
   linux-x64:
     name: Linux x64 (JVM + linuxX64)
@@ -62,54 +65,20 @@ jobs:
         with:
           path: |
             ~/.konan
-            ncnn/build/downloads
-            ncnn/build/ncnn/prebuilt
-          key: ncnn-linux-x64-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnBuilds.kt', 'buildSrc/src/main/kotlin/PreparePrebuiltInstallTask.kt') }}
+            third_party/ncnn/.downloads
+            third_party/ncnn/linux-x64
+          key: ncnn-linux-x64-${{ hashFiles('third_party/ncnn/README.md', 'third_party/ncnn/include/ncnn/c_api.h', 'scripts/fetch-ncnn-release.sh') }}
+      - name: Fetch ncnn SDK
+        run: bash ./scripts/fetch-ncnn-release.sh --platform linux-x64
       - name: Test
-        run: ./gradlew :ncnn:jvmTest :ncnn:linuxX64Test --stacktrace
+        run: ./gradlew :ncnn-core:jvmTest :ncnn-core:linuxX64Test --stacktrace
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: linux-x64-test-reports
           path: |
-            ncnn/build/reports
-            ncnn/build/test-results
-
-  macos-arm64:
-    name: macOS arm64 (JVM + macos/ios)
-    runs-on: macos-15
-    timeout-minutes: 90
-    env:
-      NCNN_ANDROID: "false"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: gradle/actions/setup-gradle@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.konan
-            ncnn/build/downloads
-            ncnn/build/ncnn/prebuilt
-          key: ncnn-macos-arm64-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnBuilds.kt', 'buildSrc/src/main/kotlin/PreparePrebuiltInstallTask.kt') }}
-      - name: Test
-        run: >-
-          ./gradlew
-          :ncnn:jvmTest
-          :ncnn:macosArm64Test
-          :ncnn:iosSimulatorArm64Test
-          :ncnn:linkDebugTestIosArm64
-          --stacktrace
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: macos-test-reports
-          path: |
-            ncnn/build/reports
-            ncnn/build/test-results
+            ncnn-core/build/reports
+            ncnn-core/build/test-results
 
   android:
     name: Android (AAR)
@@ -130,11 +99,14 @@ jobs:
         with:
           path: |
             ~/.konan
-            ncnn/build/downloads
-            ncnn/build/ncnn/prebuilt
-          key: ncnn-android-${{ hashFiles('gradle/libs.versions.toml', 'ncnn/build.gradle.kts', 'buildSrc/src/main/kotlin/NcnnBuilds.kt', 'buildSrc/src/main/kotlin/PreparePrebuiltInstallTask.kt') }}
-      - name: Build AAR (all ABIs)
-        run: ./gradlew :ncnn-android-native:assembleDebug --stacktrace
+            third_party/ncnn/.downloads
+            third_party/ncnn/linux-x64
+            third_party/ncnn/android
+          key: ncnn-android-${{ hashFiles('third_party/ncnn/README.md', 'third_party/ncnn/include/ncnn/c_api.h', 'scripts/fetch-ncnn-release.sh') }}
+      - name: Fetch ncnn SDK
+        run: bash ./scripts/fetch-ncnn-release.sh --platform linux-x64,android
+      - name: Build AAR and test app
+        run: ./gradlew :ncnn-android-native:assembleDebug :android-test-app:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: android-aar

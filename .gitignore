@@ -18,3 +18,9 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 tmp/
+third_party/ncnn/windows-x64/
+third_party/ncnn/linux-x64/
+third_party/ncnn/android/
+third_party/ncnn/.downloads/
+third_party/ncnn/.extract/
+ncnn-jni/src/main/resources/natives/

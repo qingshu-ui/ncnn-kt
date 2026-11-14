@@ -1,0 +1,3 @@
+headers = c_api_portable.h
+headerFilter = ncnn/c_api.h ncnn/platform.h ncnn/ncnn_export.h
+package = ncnn

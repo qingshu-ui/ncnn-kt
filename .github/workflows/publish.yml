@@ -42,6 +42,16 @@ jobs:
             build/ncnn-download
           key: ncnn-publish-${{ hashFiles('gradle/libs.versions.toml', 'buildSrc/src/main/kotlin/tasks/NcnnSdkPlugin.kt') }}
 
+      - name: Assemble
+        shell: pwsh
+        run: ./gradlew.bat assemble --stacktrace
+
       - name: Publish to Maven Central
         shell: pwsh
-        run: ./gradlew.bat publishToMavenCentral --stacktrace
+        run: |
+          ./gradlew.bat `
+            :ncnn-core:publishAllPublicationsToMavenCentralRepository `
+            :ncnn-binding:publishAllPublicationsToMavenCentralRepository `
+            :ncnn-jvm-jni:publishAllPublicationsToMavenCentralRepository `
+            :ncnn-android-jni:publishAllPublicationsToMavenCentralRepository `
+            --stacktrace

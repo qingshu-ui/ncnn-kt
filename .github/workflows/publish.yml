@@ -1,0 +1,47 @@
+name: Build & Publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to Maven Central
+    runs-on: windows-2025
+    timeout-minutes: 90
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android SDK packages
+        shell: pwsh
+        run: |
+          $sdkmanager = (Get-Command sdkmanager -ErrorAction SilentlyContinue).Source
+          if (-not $sdkmanager) {
+            $sdkmanager = Join-Path $env:ANDROID_HOME "cmdline-tools/latest/bin/sdkmanager.bat"
+          }
+          & $sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan
+            build/ncnn-download
+          key: ncnn-publish-${{ hashFiles('gradle/libs.versions.toml', 'buildSrc/src/main/kotlin/tasks/NcnnSdkPlugin.kt') }}
+
+      - name: Publish to Maven Central
+        shell: pwsh
+        run: ./gradlew.bat publishToMavenCentral --stacktrace

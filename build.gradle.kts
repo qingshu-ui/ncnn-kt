@@ -17,6 +17,8 @@ plugins {
 
 val spotlessPlugin = libs.plugins.spotless.get().pluginId
 allprojects {
+    group = providers.gradleProperty("GROUP_ID").get()
+    version = providers.gradleProperty("VERSION").get()
     apply(plugin = spotlessPlugin)
 
     configure<SpotlessExtension> {

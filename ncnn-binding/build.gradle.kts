@@ -4,9 +4,6 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
 }
 
-group = "io.github.qingshu-ui"
-version = "1.0.0"
-
 val ncnnLibsDir = rootProject.layout.projectDirectory.dir("libs")
 val ncnnPlatformByTarget = mapOf(
     "mingwX64" to "windows-x64",

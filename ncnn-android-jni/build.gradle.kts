@@ -6,9 +6,6 @@ plugins {
     alias(libs.plugins.android.kmp.library)
 }
 
-group = "io.github.qingshu"
-version = "unspecified"
-
 val ncnnLibsDir = rootProject.layout.projectDirectory.dir("libs")
 val ncnnPlatformByTarget = mapOf(
     "androidNativeArm32" to "android-armeabi-v7a",

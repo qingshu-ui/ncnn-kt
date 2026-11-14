@@ -5,9 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
 }
 
-group = "io.github.qingshu"
-version = "unspecified"
-
 val jdkHome: File = extensions.getByType(JavaToolchainService::class.java)
     .launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) }
     .get().metadata.installationPath.asFile

@@ -9,9 +9,6 @@ plugins {
     alias(libs.plugins.android.kmp.library)
 }
 
-group = "io.github.qingshu-ui"
-version = "1.0.0"
-
 kotlin {
     jvmToolchain(21)
     jvm {

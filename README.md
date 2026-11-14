@@ -1,5 +1,7 @@
 # ncnn-kt
 
+English | [简体中文](README_zh.md)
+
 Kotlin Multiplatform bindings for [Tencent ncnn](https://github.com/Tencent/ncnn), the high-performance
 neural network inference framework for mobile and desktop.
 

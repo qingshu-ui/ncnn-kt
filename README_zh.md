@@ -1,5 +1,7 @@
 # ncnn-kt
 
+[English](README.md) | 简体中文
+
 [腾讯 ncnn](https://github.com/Tencent/ncnn) 的 Kotlin Multiplatform 绑定。ncnn 是一个面向移动端和桌面端的
 高性能神经网络推理框架。
 

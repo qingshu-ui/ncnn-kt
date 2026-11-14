@@ -65,6 +65,35 @@ Android AAR 始终包含三个 ABI。
 Kotlin/Native 产物是 klib，不含原生二进制。使用 `mingwX64` / `linuxX64` 的调用方需要在 cinterop 与链接路径中
 提供对应平台的 ncnn 预编译 SDK（`libs/<platform>`）。
 
+### 如何选择原生目标所需的 ncnn 版本
+
+klib 只包含 Kotlin 元数据，C 库需要应用自行链接。每个 ncnn-kt 版本固定对应一个 ncnn 版本：
+
+| ncnn-kt | ncnn |
+| --- | --- |
+| 1.0.0 | 20261020 |
+
+`1.0.0` 使用 `20261020` 的发布包：
+
+| 目标 | 资源 |
+| --- | --- |
+| `mingwX64` | `ncnn-20261020-windows-vs2022-shared.zip` |
+| `linuxX64` | `ncnn-20261020-ubuntu-2404-shared.zip` |
+
+从 <https://github.com/Tencent/ncnn/releases/tag/20261020> 下载并校验 SHA-256：
+
+```
+windows-x64  7f39107af5ee4c1e657b8fd01e8b3cad6c0ab7fdbb0713532f01937134285b3d
+linux-x64    996e07a787550b782dd5891a2a60d7fa5d8f84452bb2f244ce0f3f9c01417842
+android      c2f866782cb6b8337bcd062f12b0da1b75e703f4e90fc7905d00c7c74d669a87
+```
+
+解压后确保存在 `libs/<platform>/include/ncnn` 与 `libs/<platform>/lib`。运行时 `Ncnn.versionNumber` 返回固定值
+（`20261020`），可立即发现原生库版本不匹配。
+
+版本固定值定义在 [`NcnnSdkPlugin.kt`](buildSrc/src/main/kotlin/NcnnSdkPlugin.kt)，本仓库的 `downloadNcnn`
+任务会执行同样的下载。
+
 ## 快速开始
 
 ```kotlin

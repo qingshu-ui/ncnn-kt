@@ -65,6 +65,38 @@ only the Linux ones. The Android AAR always contains all three ABIs.
 Kotlin/Native artifacts are klibs, not native binaries. Consumers of the `mingwX64` / `linuxX64`
 targets must provide the matching ncnn prebuilt SDK (`libs/<platform>`) on the cinterop and link path.
 
+### Choosing the ncnn release for native targets
+
+A klib only carries Kotlin metadata, so the application links the C library itself. Each ncnn-kt
+release is built against exactly one ncnn release:
+
+| ncnn-kt | ncnn |
+| --- | --- |
+| 1.0.0 | 20261020 |
+
+For `1.0.0`, use the `20261020` assets:
+
+| Target | Asset |
+| --- | --- |
+| `mingwX64` | `ncnn-20261020-windows-vs2022-shared.zip` |
+| `linuxX64` | `ncnn-20261020-ubuntu-2404-shared.zip` |
+
+Download them from <https://github.com/Tencent/ncnn/releases/tag/20261020>, verify the SHA-256:
+
+```
+windows-x64  7f39107af5ee4c1e657b8fd01e8b3cad6c0ab7fdbb0713532f01937134285b3d
+linux-x64    996e07a787550b782dd5891a2a60d7fa5d8f84452bb2f244ce0f3f9c01417842
+android      c2f866782cb6b8337bcd062f12b0da1b75e703f4e90fc7905d00c7c74d669a87
+```
+
+and extract them so that `libs/<platform>/include/ncnn` and `libs/<platform>/lib` exist. At runtime,
+`Ncnn.versionNumber` returns the pinned value (`20261020`), so a mismatched native library is visible
+immediately.
+
+The pinned values are defined in
+[`NcnnSdkPlugin.kt`](buildSrc/src/main/kotlin/NcnnSdkPlugin.kt); the `downloadNcnn` task performs the
+same download for this repository.
+
 ## Quick start
 
 ```kotlin

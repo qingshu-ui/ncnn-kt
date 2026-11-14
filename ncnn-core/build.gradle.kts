@@ -20,7 +20,7 @@ kotlin {
         }
     }
     android {
-        namespace = "io.github.qingshu.ncnn.core"
+        namespace = "io.github.qingshu.ncnn_core"
         compileSdk {
             version = release(37)
         }

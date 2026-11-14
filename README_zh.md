@@ -159,29 +159,6 @@ net.loadModel(modelBytes)
 ./gradlew spotlessCheck
 ```
 
-## 发布
-
-项目以 `io.github.qingshu-ui` 为 group 发布到 Maven Central。`publish_all.sh` 会先 assemble 所有模块，再逐个
-发布四个模块：
-
-```bash
-./publish_all.sh
-```
-
-凭据来自 Gradle 属性或 `ORG_GRADLE_PROJECT_*` 环境变量：
-
-```properties
-mavenCentralUsername=...
-mavenCentralPassword=...
-signingInMemoryKey=...
-signingInMemoryKeyPassword=...
-```
-
-Vanniktech 插件的 `publishToMavenCentral` 只会暂存部署（staging），需要在
-[Central Portal](https://central.sonatype.com) 手动发布。GitHub 工作流
-[`.github/workflows/publish.yml`](.github/workflows/publish.yml) 在 `windows-2025` 上执行同一个脚本，
-这是为了让 JVM jar 同时包含两个桌面平台的原生库。
-
 ## 许可证
 
 本项目采用 BSD 3-Clause 许可证，详见 [LICENSE.txt](LICENSE.txt)。

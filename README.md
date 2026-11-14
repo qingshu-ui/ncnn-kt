@@ -163,29 +163,6 @@ Useful tasks:
 ./gradlew spotlessCheck
 ```
 
-## Publishing
-
-The library is published to Maven Central under `io.github.qingshu-ui`. `publish_all.sh` assembles
-everything and stages all four modules:
-
-```bash
-./publish_all.sh
-```
-
-Credentials come from Gradle properties or `ORG_GRADLE_PROJECT_*` environment variables:
-
-```properties
-mavenCentralUsername=...
-mavenCentralPassword=...
-signingInMemoryKey=...
-signingInMemoryKeyPassword=...
-```
-
-`publishToMavenCentral` in the Vanniktech plugin stages deployments; release them from the
-[Central Portal](https://central.sonatype.com). The GitHub workflow
-[`.github/workflows/publish.yml`](.github/workflows/publish.yml) runs the same script on
-`windows-2025`, which is required so the JVM jar contains both desktop natives.
-
 ## License
 
 This project is licensed under the BSD 3-Clause License; see [LICENSE.txt](LICENSE.txt).

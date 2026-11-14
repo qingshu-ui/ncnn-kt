@@ -69,3 +69,7 @@ kotlin.targets.filterIsInstance<KotlinNativeTarget>().forEach { target ->
         }
     }
 }
+
+tasks.matching { it.name.startsWith("cinteropNcnn") }.configureEach {
+    dependsOn(rootProject.tasks.named("downloadNcnn"))
+}

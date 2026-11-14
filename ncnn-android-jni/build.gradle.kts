@@ -38,6 +38,10 @@ kotlin.targets.filterIsInstance<KotlinNativeTarget>().forEach { target ->
     }
 
     target.binaries.all {
+        linkTaskProvider.configure { dependsOn(rootProject.tasks.named("downloadNcnn")) }
+    }
+
+    target.binaries.all {
         linkerOpts += listOf(
             "-L${ncnnPlatformDir.dir("lib").asFile.absolutePath}",
             "-lncnn",

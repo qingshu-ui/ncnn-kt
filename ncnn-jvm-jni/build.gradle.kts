@@ -34,6 +34,10 @@ kotlin.targets.filterIsInstance<KotlinNativeTarget>().forEach { target ->
     }
 
     target.binaries.all {
+        linkTaskProvider.configure { dependsOn(rootProject.tasks.named("downloadNcnn")) }
+    }
+
+    target.binaries.all {
         linkerOpts += when (target.name) {
             "linuxX64" -> listOf(
                 "-L${ncnnLibsDir.dir("linux-x64/lib").asFile.absolutePath}",

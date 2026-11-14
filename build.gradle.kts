@@ -1,8 +1,8 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
-import ncnn.NcnnSdkPlugin
 import org.gradle.kotlin.dsl.configure
 
 plugins {
+    id("ncnn.sdk")
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.android) apply false
@@ -43,5 +43,3 @@ allprojects {
         }
     }
 }
-
-apply<NcnnSdkPlugin>()

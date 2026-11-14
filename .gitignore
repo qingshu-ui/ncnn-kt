@@ -24,3 +24,5 @@ third_party/ncnn/android/
 third_party/ncnn/.downloads/
 third_party/ncnn/.extract/
 ncnn-jni/src/main/resources/natives/
+
+*.log

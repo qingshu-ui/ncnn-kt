@@ -7,6 +7,7 @@ kotlinx-serialization = "1.10.0"
 spotless = "8.4.0"
 agp = "9.0.0"
 ncnnVersion = "20261020"
+vanniktech-maven-publish = "0.37.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -25,3 +26,4 @@ spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 android-application = { id = "com.android.application", version.ref = "agp" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-maven-publish" }

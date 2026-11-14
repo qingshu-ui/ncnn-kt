@@ -1,5 +1,7 @@
-package ncnn.tasks
+package ncnn
 
+import ncnn.tasks.DownloadNcnnTask
+import ncnn.tasks.PrebuiltAsset
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 

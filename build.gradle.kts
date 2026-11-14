@@ -1,5 +1,5 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
-import ncnn.tasks.NcnnSdkPlugin
+import ncnn.NcnnSdkPlugin
 import org.gradle.kotlin.dsl.configure
 
 plugins {

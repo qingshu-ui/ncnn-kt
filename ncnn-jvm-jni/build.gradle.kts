@@ -63,40 +63,40 @@ kotlin.targets.filterIsInstance<KotlinNativeTarget>().forEach { target ->
     }
 }
 
-// Bundle the host JNI bridge and its ncnn runtime into the JVM jar under /natives/<platform>/.
-val hostPlatformId = when {
-    HostManager.hostIsMingw -> "windows-x64"
-    HostManager.hostIsLinux -> "linux-x64"
-    else -> null
+// Bundle the JNI bridge and ncnn runtime for every desktop platform into the JVM jar.
+// Linux is cross-linkable from Windows, so a Windows build ships both platform directories.
+val desktopPlatforms = buildList<Triple<String, String, String>> {
+    add(Triple("linux-x64", "linuxX64", "libncnn_jni.so"))
+    if (HostManager.hostIsMingw) {
+        add(Triple("windows-x64", "mingwX64", "ncnn_jni.dll"))
+    }
 }
-if (hostPlatformId != null) {
-    val hostTarget = if (hostPlatformId == "windows-x64") "mingwX64" else "linuxX64"
-    val hostJniLibrary = if (hostPlatformId == "windows-x64") "ncnn_jni.dll" else "libncnn_jni.so"
 
-    val jvmNatives = tasks.register<Sync>("jvmNatives") {
-        group = "build"
-        description = "Bundles the host ncnn JNI bridge and ncnn runtime for the JVM jar."
-        dependsOn("linkReleaseShared${hostTarget.replaceFirstChar(Char::uppercaseChar)}")
-        into(layout.buildDirectory.dir("generated/ncnnJvmResources"))
+val jvmNatives = tasks.register<Sync>("jvmNatives") {
+    group = "build"
+    description = "Bundles the ncnn JNI bridge and ncnn runtime into the JVM jar."
+    into(layout.buildDirectory.dir("generated/ncnnJvmResources"))
 
-        from(layout.buildDirectory.dir("bin/$hostTarget/releaseShared")) {
-            include(hostJniLibrary)
-            into("natives/$hostPlatformId")
+    desktopPlatforms.forEach { (platformId, targetName, jniLibrary) ->
+        dependsOn("linkReleaseShared${targetName.replaceFirstChar(Char::uppercaseChar)}")
+        from(layout.buildDirectory.dir("bin/$targetName/releaseShared")) {
+            include(jniLibrary)
+            into("natives/$platformId")
         }
-        if (hostPlatformId == "windows-x64") {
+        if (platformId == "windows-x64") {
             from(ncnnLibsDir.dir("windows-x64/bin")) {
                 include("ncnn.dll")
-                into("natives/$hostPlatformId")
+                into("natives/$platformId")
             }
         } else {
             from(ncnnLibsDir.dir("linux-x64/lib")) {
-                include("libncnn.so*")
-                into("natives/$hostPlatformId")
+                include("libncnn.so.1")
+                into("natives/$platformId")
             }
         }
     }
+}
 
-    kotlin.sourceSets.named("jvmMain") {
-        resources.srcDir(jvmNatives)
-    }
+kotlin.sourceSets.named("jvmMain") {
+    resources.srcDir(jvmNatives)
 }

@@ -30,7 +30,7 @@ pluginManagement {
 
 rootProject.name = "ncnn-kt"
 
-include("app")
+include("ncnn-core")
 include("ncnn-binding")
 
 include("ncnn-android-jni")

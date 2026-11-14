@@ -1,4 +1,4 @@
-package io.github.qingshu.kmpt
+package io.github.qingshu.ncnn_core
 
 import kotlin.test.Test
 

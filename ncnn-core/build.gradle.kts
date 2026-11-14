@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.konan.target.HostManager
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.android.kmp.library)
 }
 
 group = "io.github.qingshu-ui"
@@ -18,21 +19,14 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_21)
         }
     }
-
-    listOf(
-        mingwX64(),
-        linuxX64(),
-    ).forEach { target ->
-        target.apply {
-            binaries {
-                executable {
-                    entryPoint = "io.github.qingshu.kmpt.main"
-                    baseName += "-$version"
-                    binaryOption("smallBinary", "true")
-                }
-            }
+    android {
+        namespace = "io.github.qingshu.ncnn.core"
+        compileSdk {
+            version = release(37)
         }
     }
+    mingwX64()
+    linuxX64()
 
     compilerOptions {
         freeCompilerArgs.addAll(
@@ -48,6 +42,15 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+        }
+        jvmMain.dependencies {
+            implementation(projects.ncnnJvmJni)
+        }
+        androidMain.dependencies {
+            implementation(projects.ncnnAndroidJni)
+        }
+        nativeMain.dependencies {
+            implementation(projects.ncnnBinding)
         }
     }
 }

@@ -84,7 +84,8 @@ abstract class DownloadNcnnTask : DefaultTask() {
                 .filter { !it.isDirectory && it.name.startsWith(prefix) }
                 .forEach { entry ->
                     when (val rel = entry.name.removePrefix(prefix)) {
-                        "lib/libncnn.so", "lib/libncnn.so.1" -> Unit // recreated as symlinks below
+                        "lib/libncnn.so", "lib/libncnn.so.1" ->
+                            if (platform == "linux-x64") Unit else copyEntry(zipFile, entry, File(target, rel))
                         "lib/ncnn.lib", "bin/ncnn.dll" -> copyEntry(zipFile, entry, File(target, rel))
                         else -> {
                             if (rel.startsWith("include/ncnn/")) {

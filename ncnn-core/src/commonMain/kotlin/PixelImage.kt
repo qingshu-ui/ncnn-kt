@@ -7,6 +7,9 @@ package io.github.qingshu.ncnn_core
  * obtained from [Mat.toPixels] is already in this layout. Drawing is clipped to the canvas, so
  * shapes may extend past the edges.
  *
+ * Rasterization is ncnn's: lines are thresholded by floating-point distance, so a pixel exactly on
+ * that boundary can be painted on one platform build and skipped on another.
+ *
  * A drawing `color` is a packed 32-bit value whose least significant byte is channel 0, then
  * channel 1, and so on. For an RGB buffer that means red is the lowest byte; [rgb] and [rgba] build
  * these values in the natural component order.

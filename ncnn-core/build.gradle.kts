@@ -66,12 +66,6 @@ tasks.register<Jar>("fatJar") {
     })
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-    manifest {
-        attributes(
-            "Main-Class" to "io.github.qingshu.kmpt.MainKt",
-        )
-    }
 }
 
 tasks.withType<KotlinNativeLink>().configureEach {

@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `PixelImage`: in-place pixel drawing with ncnn's `ncnn_draw_*` primitives — rectangles, circles,
+  lines and built-in monospace ASCII text — plus `PixelImage.rgb` / `rgba` color packing and
+  `Mat.toPixelImage` / `PixelImage.toMat` conversions.
+
 ## [1.0.0] - 2026-11-14
 
 ### Added

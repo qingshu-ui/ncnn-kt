@@ -116,3 +116,61 @@ internal actual fun matToPixelsResize(
     targetHeight: Int,
     stride: Int,
 ): ByteArray = ncnn { io.github.qingshu.ncnn.matToPixelsResize(handle, type, targetWidth, targetHeight, stride) }
+
+internal actual fun ncnnDrawRectangle(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    x: Int,
+    y: Int,
+    rectWidth: Int,
+    rectHeight: Int,
+    color: Int,
+    thickness: Int,
+): Unit = ncnn {
+    io.github.qingshu.ncnn.drawRectangle(pixels, width, height, channels, x, y, rectWidth, rectHeight, color, thickness)
+}
+
+internal actual fun ncnnDrawCircle(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    centerX: Int,
+    centerY: Int,
+    radius: Int,
+    color: Int,
+    thickness: Int,
+): Unit = ncnn {
+    io.github.qingshu.ncnn.drawCircle(pixels, width, height, channels, centerX, centerY, radius, color, thickness)
+}
+
+internal actual fun ncnnDrawLine(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    x0: Int,
+    y0: Int,
+    x1: Int,
+    y1: Int,
+    color: Int,
+    thickness: Int,
+): Unit = ncnn {
+    io.github.qingshu.ncnn.drawLine(pixels, width, height, channels, x0, y0, x1, y1, color, thickness)
+}
+
+internal actual fun ncnnDrawText(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    text: String,
+    x: Int,
+    y: Int,
+    fontPixelSize: Int,
+    color: Int,
+): Unit = ncnn {
+    io.github.qingshu.ncnn.drawText(pixels, width, height, channels, text, x, y, fontPixelSize, color)
+}

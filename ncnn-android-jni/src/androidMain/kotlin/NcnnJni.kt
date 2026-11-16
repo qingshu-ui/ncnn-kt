@@ -116,3 +116,53 @@ external fun matToPixelsResize(
     targetHeight: Int,
     stride: Int,
 ): ByteArray
+
+external fun drawRectangle(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    x: Int,
+    y: Int,
+    rectWidth: Int,
+    rectHeight: Int,
+    color: Int,
+    thickness: Int,
+)
+
+external fun drawCircle(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    centerX: Int,
+    centerY: Int,
+    radius: Int,
+    color: Int,
+    thickness: Int,
+)
+
+external fun drawLine(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    x0: Int,
+    y0: Int,
+    x1: Int,
+    y1: Int,
+    color: Int,
+    thickness: Int,
+)
+
+external fun drawText(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    text: String,
+    x: Int,
+    y: Int,
+    fontPixelSize: Int,
+    color: Int,
+)

@@ -118,3 +118,53 @@ internal expect fun matToPixelsResize(
     targetHeight: Int,
     stride: Int,
 ): ByteArray
+
+internal expect fun ncnnDrawRectangle(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    x: Int,
+    y: Int,
+    rectWidth: Int,
+    rectHeight: Int,
+    color: Int,
+    thickness: Int,
+)
+
+internal expect fun ncnnDrawCircle(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    centerX: Int,
+    centerY: Int,
+    radius: Int,
+    color: Int,
+    thickness: Int,
+)
+
+internal expect fun ncnnDrawLine(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    x0: Int,
+    y0: Int,
+    x1: Int,
+    y1: Int,
+    color: Int,
+    thickness: Int,
+)
+
+internal expect fun ncnnDrawText(
+    pixels: ByteArray,
+    width: Int,
+    height: Int,
+    channels: Int,
+    text: String,
+    x: Int,
+    y: Int,
+    fontPixelSize: Int,
+    color: Int,
+)

@@ -93,6 +93,16 @@ internal fun newJByteArray(env: CPointer<JNIEnvVar>, bytes: ByteArray): JByteArr
     return result
 }
 
+/** Copies [bytes] back into the caller's Java array, preserving in-place update semantics. */
+internal fun updateJByteArray(env: CPointer<JNIEnvVar>, array: JByteArray?, bytes: ByteArray) {
+    if (array == null || bytes.isEmpty()) return
+    val table = env.jniTable() ?: return
+    val length = table.pointed.GetArrayLength!!(env, array.reinterpret())
+    val count = minOf(length, bytes.size)
+    if (count <= 0) return
+    bytes.usePinned { table.pointed.SetByteArrayRegion!!(env, array, 0, count, it.addressOf(0)) }
+}
+
 private fun CPointer<JniTable>.hasPendingException(env: CPointer<JNIEnvVar>): Boolean = pointed.ExceptionCheck!!(env) != 0.toUByte()
 
 private fun throwJvm(env: CPointer<JNIEnvVar>, className: String, message: String) {
